@@ -61,10 +61,6 @@ export function DiscoverScreen() {
         <>
           <View style={styles.mapWrap}>
             <HoodMap highlightHouse={highlightHouse} onHousePress={setHighlightHouse} />
-            <View style={styles.fencePill}>
-              <MapPin size={11} color={theme.colors.grassDeep} />
-              <Text style={styles.fenceText}>Inside your fence</Text>
-            </View>
           </View>
 
           {selected && (
@@ -158,21 +154,6 @@ const styles = StyleSheet.create({
   lead: { fontSize: 14, color: theme.colors.inkSoft, marginTop: 4, fontFamily: theme.font.bodyRegular },
   tabRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   mapWrap: { borderRadius: 22, borderWidth: theme.border.width, borderColor: theme.colors.line, overflow: 'hidden' },
-  fencePill: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderWidth: theme.border.width,
-    borderColor: theme.colors.line,
-    borderRadius: theme.radius.pill,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  fenceText: { fontSize: 11, fontFamily: theme.font.bodyBold, color: theme.colors.grassDeep },
   selectedRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   selectedName: { fontFamily: theme.font.displaySemibold, fontSize: 17, color: theme.colors.ink },
   selectedStreet: { fontSize: 13, color: theme.colors.inkSoft, fontFamily: theme.font.bodyRegular },
