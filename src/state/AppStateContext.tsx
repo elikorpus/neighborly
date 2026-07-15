@@ -316,7 +316,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       }
       const newUserId = signUpData.session.user.id;
       const { error: rpcError } = await supabase.rpc('complete_profile', {
-        signup_key: args.signupKey,
+        p_signup_key: args.signupKey,
         p_first_name: args.firstName,
         p_last_name: args.lastName,
         p_age: args.age,
@@ -330,7 +330,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       if (args.family.length) {
         await supabase
           .from('family_members')
-          .insert(args.family.map((f) => ({ profile_id: newUserId, name: f.name, relation: f.relation, age: f.age })));
+          .insert(args.family.map((f) => ({ profile_id: newUserId, name: f.name, relation: f.relation, age: f.age, pet_type: f.petType ?? null })));
       }
       await refreshAll();
     },
@@ -375,7 +375,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       yearsIn: myRow.years_in,
       bio: myRow.bio,
       interests: myRow.interests,
-      family: myFamily.map((f) => ({ id: f.id, name: f.name, relation: f.relation, age: f.age })),
+      family: myFamily.map((f) => ({ id: f.id, name: f.name, relation: f.relation, age: f.age, petType: f.pet_type ?? undefined })),
     };
   }, [myRow, myFamily]);
 
@@ -391,7 +391,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const directory: Person[] = useMemo(() => {
     const myInterests = new Set(myRow?.interests ?? []);
     return directoryRows.map((row) => {
-      const family = (familyByProfile[row.id] ?? []).map((f) => ({ name: f.name, relation: f.relation, age: f.age }));
+      const family = (familyByProfile[row.id] ?? []).map((f) => ({ name: f.name, relation: f.relation, age: f.age, petType: f.pet_type ?? undefined }));
       const myClubs = clubMemberRows.filter((m) => m.profile_id === row.id).map((m) => m.club_id);
       return {
         id: row.id,
@@ -626,7 +626,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       if (p.family.length) {
         await supabase
           .from('family_members')
-          .insert(p.family.map((f) => ({ profile_id: myRow.id, name: f.name, relation: f.relation, age: f.age })));
+          .insert(p.family.map((f) => ({ profile_id: myRow.id, name: f.name, relation: f.relation, age: f.age, pet_type: f.petType ?? null })));
       }
       await refreshAll();
     },
@@ -636,7 +636,9 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const addFamilyMember = useCallback(
     async (m: FamilyMember) => {
       if (!myRow) return;
-      await supabase.from('family_members').insert({ profile_id: myRow.id, name: m.name, relation: m.relation, age: m.age });
+      await supabase
+        .from('family_members')
+        .insert({ profile_id: myRow.id, name: m.name, relation: m.relation, age: m.age, pet_type: m.petType ?? null });
       await refreshAll();
     },
     [myRow, refreshAll]

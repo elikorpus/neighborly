@@ -21,10 +21,11 @@ export function ProfileScreen({ navigation }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<ProfileType>(profile);
   const [addingFam, setAddingFam] = useState(false);
-  const [fam, setFam] = useState<{ name: string; relation: FamilyMember['relation']; age: string }>({
+  const [fam, setFam] = useState<{ name: string; relation: FamilyMember['relation']; age: string; petType: string }>({
     name: '',
     relation: 'Kid',
     age: '',
+    petType: '',
   });
 
   const v = editing ? draft : profile;
@@ -51,8 +52,14 @@ export function ProfileScreen({ navigation }: Props) {
   };
   const addFam = () => {
     if (!fam.name.trim()) return;
-    setDraft((d) => ({ ...d, family: [...d.family, { ...fam }] }));
-    setFam({ name: '', relation: 'Kid', age: '' });
+    setDraft((d) => ({
+      ...d,
+      family: [
+        ...d.family,
+        { name: fam.name, relation: fam.relation, age: fam.age, petType: fam.relation === 'Pet' ? fam.petType : undefined },
+      ],
+    }));
+    setFam({ name: '', relation: 'Kid', age: '', petType: '' });
     setAddingFam(false);
   };
   const removeFam = (i: number) => setDraft((d) => ({ ...d, family: d.family.filter((_, idx) => idx !== i) }));
@@ -154,6 +161,7 @@ export function ProfileScreen({ navigation }: Props) {
                 <Text style={styles.famName}>{f.name}</Text>
                 <Text style={styles.famMeta}>
                   {f.relation}
+                  {f.petType ? ` · ${f.petType}` : ''}
                   {f.age ? ` · ${f.age}` : ''}
                 </Text>
               </View>
@@ -175,7 +183,21 @@ export function ProfileScreen({ navigation }: Props) {
                     </Chip>
                   ))}
                 </View>
-                <Input label="Age (optional)" value={fam.age} onChangeText={(t) => setFam({ ...fam, age: t })} placeholder="e.g. 6" />
+                {fam.relation === 'Pet' && (
+                  <Input
+                    label="Pet type"
+                    value={fam.petType}
+                    onChangeText={(t) => setFam({ ...fam, petType: t })}
+                    placeholder="Dog, cat, fish…"
+                  />
+                )}
+                <Input
+                  label="Age (optional)"
+                  value={fam.age}
+                  onChangeText={(t) => setFam({ ...fam, age: t })}
+                  placeholder="e.g. 6"
+                  keyboardType="number-pad"
+                />
                 <View style={styles.rowGap}>
                   <Pressable onPress={addFam} style={styles.addToHouseholdBtn}>
                     <Text style={styles.addToHouseholdText}>Add to household</Text>

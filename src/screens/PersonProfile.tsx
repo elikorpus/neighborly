@@ -93,6 +93,7 @@ export function PersonProfileScreen({ route, navigation }: Props) {
                       <Text style={styles.famName}>{f.name}</Text>
                       <Text style={styles.famMeta}>
                         {f.relation}
+                        {f.petType ? ` · ${f.petType}` : ''}
                         {f.age ? ` · ${f.age}` : ''}
                       </Text>
                     </View>

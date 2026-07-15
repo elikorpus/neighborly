@@ -10,6 +10,7 @@ export type FamilyMember = {
   name: string;
   relation: 'Spouse' | 'Kid' | 'Pet';
   age: string;
+  petType?: string;
 };
 
 export type Person = {

@@ -35,6 +35,7 @@ export type FamilyMemberRow = {
   name: string;
   relation: 'Spouse' | 'Kid' | 'Pet';
   age: string;
+  pet_type: string | null;
 };
 
 export type HouseRow = {
@@ -204,7 +205,7 @@ export type Database = {
       };
       complete_profile: {
         Args: {
-          signup_key: string;
+          p_signup_key: string;
           p_first_name: string;
           p_last_name: string;
           p_age: string;
