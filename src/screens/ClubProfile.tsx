@@ -6,7 +6,6 @@ import { Avatar } from '../components/Avatar';
 import { BackBar } from '../components/BackBar';
 import { Card } from '../components/Card';
 import { SectionLabel } from '../components/SectionLabel';
-import { CLUBS } from '../data';
 import { AppStackParamList } from '../navigation/types';
 import { useAppState } from '../state/AppStateContext';
 import { theme } from '../theme';
@@ -15,10 +14,19 @@ type Props = NativeStackScreenProps<AppStackParamList, 'ClubProfile'>;
 
 export function ClubProfileScreen({ route, navigation }: Props) {
   const { clubId } = route.params;
-  const club = CLUBS.find((c) => c.id === clubId)!;
-  const { joinedClubIds, toggleClubJoined } = useAppState();
-  const joined = joinedClubIds.includes(club.id);
+  const { clubs, joinedClubIds, toggleClubJoined } = useAppState();
+  const club = clubs.find((c) => c.id === clubId);
+  const joined = club ? joinedClubIds.includes(club.id) : false;
   const [rsvp, setRsvp] = useState(false);
+
+  if (!club) {
+    return (
+      <View style={styles.screen}>
+        <BackBar title="Club" onBack={() => navigation.goBack()} />
+      </View>
+    );
+  }
+
   const count = club.members + (joined ? 1 : 0);
 
   return (

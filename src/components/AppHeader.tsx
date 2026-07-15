@@ -10,9 +10,9 @@ export type AppHeaderProps = {
   onOpenProfile: () => void;
 };
 
-/** Persistent app-shell header: wordmark, first-run/active demo toggle, bell, avatar. */
+/** Persistent app-shell header: wordmark, notifications bell, profile avatar. */
 export function AppHeader({ onOpenNotifications, onOpenProfile }: AppHeaderProps) {
-  const { isEmpty, toggleEmpty, unreadNotificationCount, profile } = useAppState();
+  const { unreadNotificationCount, profile } = useAppState();
 
   return (
     <View style={styles.row}>
@@ -20,38 +20,18 @@ export function AppHeader({ onOpenNotifications, onOpenProfile }: AppHeaderProps
         <Text style={styles.wordmark}>
           neighborly<Text style={{ color: theme.colors.grass }}>.</Text>
         </Text>
-        <Pressable
-          onPress={toggleEmpty}
-          style={[
-            styles.toggle,
-            {
-              backgroundColor: isEmpty ? theme.colors.paper : theme.colors.grassPale,
-              borderColor: isEmpty ? theme.colors.line : 'transparent',
-            },
-          ]}
-        >
-          <Text style={[styles.toggleText, { color: isEmpty ? theme.colors.inkSoft : theme.colors.grassDeep }]}>
-            {isEmpty ? 'FIRST RUN' : 'ACTIVE'}
-          </Text>
-        </Pressable>
       </View>
       <View style={styles.right}>
         <Pressable onPress={onOpenNotifications} hitSlop={8} style={styles.bellBtn}>
-          <Bell size={19} color={isEmpty ? theme.colors.inkSoft : theme.colors.ink} />
-          {!isEmpty && unreadNotificationCount > 0 && (
+          <Bell size={19} color={theme.colors.ink} />
+          {unreadNotificationCount > 0 && (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{unreadNotificationCount}</Text>
             </View>
           )}
         </Pressable>
         <Pressable onPress={onOpenProfile}>
-          {isEmpty ? (
-            <View style={styles.placeholderAvatar}>
-              <Text style={styles.placeholderText}>?</Text>
-            </View>
-          ) : (
-            <Avatar initials={(profile.firstName[0] ?? 'E') + (profile.lastName[0] ?? 'L')} bg={theme.colors.sky} size={30} tilt={-3} />
-          )}
+          <Avatar initials={(profile.firstName[0] ?? '?') + (profile.lastName[0] ?? '')} bg={theme.colors.sky} size={30} tilt={-3} />
         </Pressable>
       </View>
     </View>
@@ -71,13 +51,6 @@ const styles = StyleSheet.create({
   },
   left: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   wordmark: { fontFamily: theme.font.displayBold, fontSize: 18, color: theme.colors.ink },
-  toggle: {
-    borderWidth: theme.border.width,
-    borderRadius: theme.radius.pill,
-    paddingVertical: 3,
-    paddingHorizontal: 9,
-  },
-  toggleText: { fontSize: 9.5, fontFamily: theme.font.bodyBold, letterSpacing: 0.3 },
   right: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   bellBtn: { padding: 4 },
   badge: {
@@ -95,16 +68,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 3,
   },
   badgeText: { color: '#fff', fontSize: 9, fontFamily: theme.font.bodyBold },
-  placeholderAvatar: {
-    width: 30,
-    height: 30,
-    backgroundColor: theme.colors.line,
-    borderWidth: theme.border.avatar,
-    borderColor: theme.colors.ink,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-    transform: [{ rotate: '-3deg' }],
-  },
-  placeholderText: { fontFamily: theme.font.displaySemibold, color: theme.colors.inkSoft, fontSize: 13 },
 });

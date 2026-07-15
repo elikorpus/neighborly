@@ -1,57 +1,43 @@
 import { Bot, Landmark, Send } from 'lucide-react-native';
 import React, { useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Card } from '../components/Card';
 import { Chip } from '../components/Chip';
+import { SectionLabel } from '../components/SectionLabel';
 import { EMPTY_STATES } from '../data/emptyStates';
 import { useAppState } from '../state/AppStateContext';
 import { theme } from '../theme';
 import { EmptyTab } from './empty';
 
 type Message = { from: 'you' | 'them'; text: string };
-type Mode = 'board' | 'ai';
+type Mode = 'board' | 'ai' | 'announcements';
 
 const AI_PLACEHOLDER =
   "The AI rules assistant will be live once Neighborly's backend is connected — for now, message the board directly.";
 
 export function HOAScreen() {
-  const { isEmpty } = useAppState();
+  const { boardMessages, sendBoardMessage, announcements } = useAppState();
   const [mode, setMode] = useState<Mode>('board');
-  const [board, setBoard] = useState<Message[]>([
-    {
-      from: 'you',
-      text: 'Hi — the streetlight at the mouth of Wren Ct has been out for a week. Pretty dark for the morning runners.',
-    },
-    {
-      from: 'them',
-      text: "Thanks Ella — logged it. CenterPoint ticket filed this morning, they quote 3–5 business days. — Rita",
-    },
-  ]);
   const [ai, setAi] = useState<Message[]>([
     {
       from: 'them',
-      text: 'Hi! I know the Cypress Bend covenants inside out. Ask me anything — fences, paint colors, RV parking, pool hours, fine appeals…',
+      text: 'Hi! I know your covenants inside out. Ask me anything — fences, paint colors, RV parking, pool hours, fine appeals…',
     },
   ]);
   const [text, setText] = useState('');
   const scrollRef = useRef<ScrollView>(null);
 
-  if (isEmpty) return <EmptyTab config={EMPTY_STATES.hoa} />;
+  if (boardMessages.length === 0 && announcements.length === 0) return <EmptyTab config={EMPTY_STATES.hoa} />;
 
-  const msgs = mode === 'board' ? board : ai;
+  const msgs = mode === 'board' ? boardMessages : ai;
 
   const send = () => {
     const value = text.trim();
     if (!value) return;
     setText('');
     if (mode === 'board') {
-      setBoard((m) => [...m, { from: 'you', text: value }]);
-      setTimeout(() => {
-        setBoard((m) => [
-          ...m,
-          { from: 'them', text: "Got it — added to the board's queue. We typically reply within 2 business days. — Cypress Bend HOA" },
-        ]);
-      }, 700);
-    } else {
+      sendBoardMessage(value);
+    } else if (mode === 'ai') {
       setAi((m) => [...m, { from: 'you', text: value }]);
       setTimeout(() => setAi((m) => [...m, { from: 'them', text: AI_PLACEHOLDER }]), 500);
     }
@@ -61,8 +47,11 @@ export function HOAScreen() {
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
       <View style={styles.headerBlock}>
         <Text style={styles.h1}>Your HOA</Text>
-        <Text style={styles.lead}>Cypress Bend Community Association · Rita Boone, president</Text>
+        <Text style={styles.lead}>Your community association</Text>
         <View style={styles.tabRow}>
+          <Chip active={mode === 'announcements'} onPress={() => setMode('announcements')}>
+            📣 Announcements
+          </Chip>
           <Chip active={mode === 'board'} onPress={() => setMode('board')}>
             💬 Message the board
           </Chip>
@@ -72,19 +61,35 @@ export function HOAScreen() {
         </View>
       </View>
 
-      <ScrollView
-        ref={scrollRef}
-        style={{ flex: 1 }}
-        contentContainerStyle={styles.messages}
-        onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
-      >
-        {mode === 'ai' && (
-          <View style={styles.aiNote}>
-            <Bot size={13} color={theme.colors.grassDeep} />
-            <Text style={styles.aiNoteText}>AI answers from your covenants — not official rulings. For appeals, message the board.</Text>
-          </View>
-        )}
-        {msgs.map((m, i) => (
+      {mode === 'announcements' ? (
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.messages}>
+          <SectionLabel>Board announcements</SectionLabel>
+          {announcements.length === 0 && <Text style={styles.emptyAnnouncements}>No announcements yet.</Text>}
+          {announcements.map((a) => (
+            <Card key={a.id} style={{ marginBottom: 12 }}>
+              <Text style={styles.announcementTitle}>{a.title}</Text>
+              <Text style={styles.announcementBody}>{a.body}</Text>
+              <Text style={styles.announcementMeta}>
+                {a.authorName} · {a.createdAt}
+              </Text>
+            </Card>
+          ))}
+        </ScrollView>
+      ) : (
+        <>
+          <ScrollView
+            ref={scrollRef}
+            style={{ flex: 1 }}
+            contentContainerStyle={styles.messages}
+            onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+          >
+            {mode === 'ai' && (
+              <View style={styles.aiNote}>
+                <Bot size={13} color={theme.colors.grassDeep} />
+                <Text style={styles.aiNoteText}>AI answers from your covenants — not official rulings. For appeals, message the board.</Text>
+              </View>
+            )}
+            {msgs.map((m, i) => (
           <View key={i} style={[styles.msgRow, { justifyContent: m.from === 'you' ? 'flex-end' : 'flex-start' }]}>
             {m.from === 'them' && (
               <View style={[styles.avatarChip, { backgroundColor: mode === 'ai' ? theme.colors.ink : theme.colors.lilac }]}>
@@ -104,21 +109,23 @@ export function HOAScreen() {
             </View>
           </View>
         ))}
-      </ScrollView>
+          </ScrollView>
 
-      <View style={styles.inputRow}>
-        <TextInput
-          value={text}
-          onChangeText={setText}
-          onSubmitEditing={send}
-          placeholder={mode === 'board' ? 'Share a concern with the board…' : 'Can I park an RV overnight?'}
-          placeholderTextColor={theme.colors.inkSoft}
-          style={styles.input}
-        />
-        <Pressable onPress={send} style={styles.sendBtn}>
-          <Send size={17} color="#fff" />
-        </Pressable>
-      </View>
+          <View style={styles.inputRow}>
+            <TextInput
+              value={text}
+              onChangeText={setText}
+              onSubmitEditing={send}
+              placeholder={mode === 'board' ? 'Share a concern with the board…' : 'Can I park an RV overnight?'}
+              placeholderTextColor={theme.colors.inkSoft}
+              style={styles.input}
+            />
+            <Pressable onPress={send} style={styles.sendBtn}>
+              <Send size={17} color="#fff" />
+            </Pressable>
+          </View>
+        </>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -128,8 +135,12 @@ const styles = StyleSheet.create({
   headerBlock: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 12 },
   h1: { fontFamily: theme.font.displaySemibold, fontSize: 28, color: theme.colors.ink },
   lead: { fontSize: 13.5, color: theme.colors.inkSoft, marginTop: 4, fontFamily: theme.font.bodyRegular },
-  tabRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  tabRow: { flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' },
   messages: { paddingHorizontal: 20, paddingBottom: 12 },
+  emptyAnnouncements: { fontSize: 13.5, color: theme.colors.inkSoft, fontFamily: theme.font.bodySemibold, textAlign: 'center', paddingVertical: 24 },
+  announcementTitle: { fontSize: 15, fontFamily: theme.font.bodyBold, color: theme.colors.ink },
+  announcementBody: { fontSize: 13.5, color: theme.colors.ink, marginTop: 4, fontFamily: theme.font.bodyRegular, lineHeight: 13.5 * 1.4 },
+  announcementMeta: { fontSize: 11.5, color: theme.colors.inkSoft, fontFamily: theme.font.bodySemibold, marginTop: 8 },
   aiNote: {
     backgroundColor: theme.colors.grassPale,
     borderRadius: 12,

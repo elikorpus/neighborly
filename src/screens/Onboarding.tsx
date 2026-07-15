@@ -21,6 +21,7 @@ import { Chip } from '../components/Chip';
 import { Input } from '../components/Input';
 import { ONBOARDING_INTERESTS, TENURE } from '../data/constants';
 import { FamilyMember } from '../data/types';
+import { supabase } from '../lib/supabase';
 import { AuthStackParamList } from '../navigation/types';
 import { useAppState } from '../state/AppStateContext';
 import { theme } from '../theme';
@@ -76,9 +77,13 @@ function ConfettiPiece({ index }: { index: number }) {
 }
 
 export function OnboardingScreen({ navigation }: Props) {
-  const { setProfile, login } = useAppState();
+  const { completeSignup } = useAppState();
   const [step, setStep] = useState(0);
   const [code, setCode] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [checkingCode, setCheckingCode] = useState(false);
+  const [codeError, setCodeError] = useState('');
   const [about, setAbout] = useState({
     firstName: '',
     lastName: '',
@@ -96,9 +101,25 @@ export function OnboardingScreen({ navigation }: Props) {
   });
   const [addingFam, setAddingFam] = useState(false);
   const [picked, setPicked] = useState<string[]>(['Coffee', 'Running']);
+  const [finishing, setFinishing] = useState(false);
+  const [finishError, setFinishError] = useState('');
 
-  const codeOk = code.trim().length >= 6;
+  const emailOk = /\S+@\S+\.\S+/.test(email.trim());
+  const codeOk = code.trim().length >= 4 && emailOk && password.length >= 6;
   const aboutOk = about.firstName.trim().length > 0 && about.street.trim().length > 0;
+
+  const joinStep = async () => {
+    if (!codeOk || checkingCode) return;
+    setCheckingCode(true);
+    setCodeError('');
+    const { data, error } = await supabase.rpc('validate_signup_key', { key: code.trim() });
+    setCheckingCode(false);
+    if (error || !data || data.length === 0) {
+      setCodeError("That code doesn't match a Neighborly community yet.");
+      return;
+    }
+    setStep(1);
+  };
 
   const addFam = () => {
     if (!fam.name.trim()) return;
@@ -107,19 +128,29 @@ export function OnboardingScreen({ navigation }: Props) {
     setAddingFam(false);
   };
 
-  const finish = () => {
-    setProfile({
-      firstName: about.firstName || 'Neighbor',
-      lastName: about.lastName,
-      age: about.age,
-      profession: about.profession,
-      street: about.street,
-      yearsIn: about.yearsIn,
-      bio: about.bio,
-      interests: picked,
-      family,
-    });
-    login();
+  const finish = async () => {
+    if (finishing) return;
+    setFinishing(true);
+    setFinishError('');
+    try {
+      await completeSignup({
+        email: email.trim(),
+        password,
+        signupKey: code.trim(),
+        firstName: about.firstName || 'Neighbor',
+        lastName: about.lastName,
+        age: about.age,
+        street: about.street,
+        profession: about.profession,
+        yearsIn: about.yearsIn,
+        bio: about.bio,
+        interests: picked,
+        family,
+      });
+    } catch (e) {
+      setFinishError(e instanceof Error ? e.message : 'Something went wrong finishing signup.');
+      setFinishing(false);
+    }
   };
 
   return (
@@ -144,7 +175,7 @@ export function OnboardingScreen({ navigation }: Props) {
           <ScrollView contentContainerStyle={styles.stepContent} keyboardShouldPersistTaps="handled">
             <Text style={styles.h1}>Got your{'\n'}join code?</Text>
             <Text style={styles.lead}>
-              It's on your welcome card or from a neighbor. Codes keep Cypress Bend just for the people who live
+              It's on your welcome card or from a neighbor. Codes keep your community just for the people who live
               here.
             </Text>
             <TextInput
@@ -157,11 +188,39 @@ export function OnboardingScreen({ navigation }: Props) {
             />
             <View style={styles.hintRow}>
               <MapPin size={14} color={theme.colors.grass} />
-              <Text style={styles.hintText}>We'll confirm you're inside the Cypress Bend fence</Text>
+              <Text style={styles.hintText}>We'll confirm your code before you continue</Text>
             </View>
-            <View style={{ marginTop: 32, marginBottom: 24 }}>
-              <Button disabled={!codeOk} onPress={() => setStep(1)} trailing={<ArrowRight size={18} color={codeOk ? '#fff' : theme.colors.inkSoft} />}>
-                Join Cypress Bend
+            <View style={{ marginTop: 20 }}>
+              <Input
+                label="Email"
+                value={email}
+                onChangeText={setEmail}
+                placeholder="you@example.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                textContentType="emailAddress"
+              />
+              <Input
+                label="Password"
+                value={password}
+                onChangeText={setPassword}
+                placeholder="At least 6 characters"
+                secureTextEntry
+                autoCapitalize="none"
+                autoComplete="password-new"
+                textContentType="newPassword"
+              />
+            </View>
+            {!!codeError && <Text style={styles.errorText}>{codeError}</Text>}
+            <View style={{ marginTop: 12, marginBottom: 24 }}>
+              <Button
+                disabled={!codeOk}
+                loading={checkingCode}
+                onPress={joinStep}
+                trailing={<ArrowRight size={18} color={codeOk ? '#fff' : theme.colors.inkSoft} />}
+              >
+                Join with this code
               </Button>
             </View>
           </ScrollView>
@@ -314,14 +373,14 @@ export function OnboardingScreen({ navigation }: Props) {
                 {about.firstName || 'neighbor'}.
               </Text>
               <Text style={styles.confettiBody}>
-                Welcome to <Text style={{ fontFamily: theme.font.bodyBold, color: theme.colors.grassDeep }}>Cypress Bend</Text> — 312
-                households, 9 events this month, and{' '}
-                <Text style={{ fontFamily: theme.font.bodyBold, color: theme.colors.grassDeep }}>18 neighbors</Text> who already share
-                your interests.
+                One last step — we're setting up your spot on the street.
               </Text>
+              {!!finishError && <Text style={[styles.errorText, { marginTop: 12 }]}>{finishError}</Text>}
             </View>
             <View style={{ paddingHorizontal: 24, paddingBottom: 32 }}>
-              <Button onPress={finish}>Open Neighborly</Button>
+              <Button onPress={finish} loading={finishing}>
+                Open Neighborly
+              </Button>
             </View>
           </View>
         )}
@@ -370,6 +429,7 @@ const styles = StyleSheet.create({
   },
   hintRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16, justifyContent: 'center' },
   hintText: { fontSize: 13, color: theme.colors.inkSoft, fontFamily: theme.font.bodySemibold },
+  errorText: { fontSize: 12.5, color: theme.colors.red, fontFamily: theme.font.bodySemibold, textAlign: 'center' },
   rowGap: { flexDirection: 'row', gap: 12 },
   fieldLabel: { fontSize: 11, fontFamily: theme.font.bodyBold, color: theme.colors.inkSoft, letterSpacing: theme.label.tracking, textTransform: 'uppercase' },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },

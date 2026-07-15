@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Card } from '../components/Card';
 import { Chip } from '../components/Chip';
-import { EVENTS } from '../data';
 import { EMPTY_STATES } from '../data/emptyStates';
 import { useAppNavigation } from '../navigation/useAppNavigation';
 import { EmptyTab } from './empty';
@@ -27,13 +26,13 @@ const FILTERS = ["RSVP'd", 'All events'] as const;
 
 export function EventsScreen() {
   const navigation = useAppNavigation();
-  const { eventRsvps, isEmpty } = useAppState();
+  const { events, eventRsvps } = useAppState();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("RSVP'd");
 
-  if (isEmpty) return <EmptyTab config={EMPTY_STATES.events} />;
+  if (events.length === 0) return <EmptyTab config={EMPTY_STATES.events} />;
 
-  const rsvpCount = EVENTS.filter((e) => eventRsvps[e.id]).length;
-  const list = filter === "RSVP'd" ? EVENTS.filter((e) => eventRsvps[e.id]) : EVENTS;
+  const rsvpCount = events.filter((e) => eventRsvps[e.id]).length;
+  const list = filter === "RSVP'd" ? events.filter((e) => eventRsvps[e.id]) : events;
 
   return (
     <ScrollView contentContainerStyle={styles.content}>

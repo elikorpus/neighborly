@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { AccessibilityInfo, Animated } from 'react-native';
 import Svg, { Circle, Ellipse, G, Path, Text as SvgText } from 'react-native-svg';
-import { HOUSES, YOUR_HOUSE_ID } from '../data';
+import { useAppState } from '../state/AppStateContext';
 import { theme } from '../theme';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -38,6 +38,7 @@ export type HoodMapProps = {
 /** Hand-drawn Cypress Bend neighborhood map, ported verbatim from the design system's HoodMap SVG. */
 export function HoodMap({ highlightHouse, onHousePress }: HoodMapProps) {
   const C = theme.colors;
+  const { houses } = useAppState();
   return (
     <Svg viewBox="0 0 100 130" width="100%" height={undefined} style={{ aspectRatio: 100 / 130, backgroundColor: '#EFE9DB' }}>
       <Path d="M0,14 Q22,6 45,13 T100,10 L100,0 L0,0 Z" fill={C.sky} />
@@ -85,7 +86,7 @@ export function HoodMap({ highlightHouse, onHousePress }: HoodMapProps) {
       <SvgText x={16} y={31} textAnchor="middle" fontSize={2.2} fill={C.grassDeep} fontWeight="700">
         GARDEN 🌱
       </SvgText>
-      {HOUSES.map((h) => {
+      {houses.map((h) => {
         const isHi = h.id === highlightHouse;
         return (
           <G key={h.id} transform={`translate(${h.x},${h.y})`} onPress={() => onHousePress(h.id)}>
@@ -111,5 +112,3 @@ export function HoodMap({ highlightHouse, onHousePress }: HoodMapProps) {
     </Svg>
   );
 }
-
-export { YOUR_HOUSE_ID };

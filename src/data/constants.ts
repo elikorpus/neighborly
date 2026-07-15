@@ -71,18 +71,3 @@ export type ProfileData = {
   interests: string[];
   family: FamilyMember[];
 };
-
-export const DEFAULT_PROFILE: ProfileData = {
-  firstName: 'Ella',
-  lastName: 'Lane',
-  age: '34',
-  street: '4413 Wren Ct',
-  profession: 'Artist · skincare brand founder',
-  yearsIn: '3–10 years',
-  bio: 'Chronic borrower of folding tables.',
-  interests: ['Coffee', 'Running', 'Photography', 'Books'],
-  family: [
-    { name: 'Theo', relation: 'Kid', age: '6' },
-    { name: 'Pancake', relation: 'Pet', age: '3 (dog years: 21)' },
-  ],
-};

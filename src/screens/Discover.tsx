@@ -7,7 +7,7 @@ import { Card } from '../components/Card';
 import { Chip } from '../components/Chip';
 import { PopIn } from '../components/PopIn';
 import { SectionLabel } from '../components/SectionLabel';
-import { DIRECTORY, NEIGHBORHOOD_SPOTS } from '../data';
+import { NEIGHBORHOOD_SPOTS } from '../data';
 import { EMPTY_STATES } from '../data/emptyStates';
 import { useAppNavigation } from '../navigation/useAppNavigation';
 import { TabParamList } from '../navigation/types';
@@ -21,7 +21,7 @@ const VIEWS = ['map', 'pages'] as const;
 export function DiscoverScreen() {
   const navigation = useAppNavigation();
   const route = useRoute<RouteProp<TabParamList, 'Discover'>>();
-  const { isEmpty } = useAppState();
+  const { directory, houses } = useAppState();
   const [view, setView] = useState<(typeof VIEWS)[number]>('map');
   const [highlightHouse, setHighlightHouse] = useState<string | null>(route.params?.focusHouse ?? null);
   const [query, setQuery] = useState('');
@@ -33,19 +33,19 @@ export function DiscoverScreen() {
     }
   }, [route.params?.focusHouse]);
 
-  if (isEmpty) return <EmptyTab config={EMPTY_STATES.discover} isDiscover />;
+  if (directory.length === 0 && houses.length === 0) return <EmptyTab config={EMPTY_STATES.discover} isDiscover />;
 
-  const selected = DIRECTORY.find((d) => d.house === highlightHouse);
+  const selected = directory.find((d) => d.house === highlightHouse);
   const q = query.trim().toLowerCase();
   const filtered = q
-    ? DIRECTORY.filter((n) => [n.name, n.job, n.street, n.relation].join(' ').toLowerCase().includes(q))
-    : DIRECTORY;
+    ? directory.filter((n) => [n.name, n.job, n.street, n.relation].join(' ').toLowerCase().includes(q))
+    : directory;
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.headerBlock}>
-        <Text style={styles.h1}>Cypress Bend</Text>
-        <Text style={styles.lead}>312 households · mapped by your neighbors.</Text>
+        <Text style={styles.h1}>Your community</Text>
+        <Text style={styles.lead}>{directory.length + 1} households · mapped by your neighbors.</Text>
       </View>
 
       <View style={styles.tabRow}>

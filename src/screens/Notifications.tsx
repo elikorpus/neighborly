@@ -4,7 +4,6 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BackBar } from '../components/BackBar';
 import { SectionLabel } from '../components/SectionLabel';
-import { NOTIFICATIONS } from '../data';
 import { NotificationItem } from '../data/types';
 import { AppStackParamList, TabParamList } from '../navigation/types';
 import { useAppState } from '../state/AppStateContext';
@@ -14,13 +13,13 @@ import { EmptyNotifications } from './empty';
 type Props = NativeStackScreenProps<AppStackParamList, 'Notifications'>;
 
 export function NotificationsScreen({ navigation }: Props) {
-  const { isEmpty, readNotificationIds, markNotificationRead, markAllNotificationsRead } = useAppState();
+  const { notifications, readNotificationIds, markNotificationRead, markAllNotificationsRead } = useAppState();
 
-  if (isEmpty) return <EmptyNotifications onBack={() => navigation.goBack()} />;
+  if (notifications.length === 0) return <EmptyNotifications onBack={() => navigation.goBack()} />;
 
-  const isRead = (id: number) => readNotificationIds.includes(id);
-  const unread = NOTIFICATIONS.filter((n) => !isRead(n.id));
-  const earlier = NOTIFICATIONS.filter((n) => isRead(n.id));
+  const isRead = (id: string) => readNotificationIds.includes(id);
+  const unread = notifications.filter((n) => !isRead(n.id));
+  const earlier = notifications.filter((n) => isRead(n.id));
 
   const open = (n: NotificationItem) => {
     markNotificationRead(n.id);

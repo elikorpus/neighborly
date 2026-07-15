@@ -13,12 +13,11 @@ import { FamilyMember } from '../data/types';
 import { AppStackParamList } from '../navigation/types';
 import { Profile as ProfileType, useAppState } from '../state/AppStateContext';
 import { theme } from '../theme';
-import { EmptyProfile } from './empty';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Profile'>;
 
 export function ProfileScreen({ navigation }: Props) {
-  const { isEmpty, profile, setProfile, logout } = useAppState();
+  const { profile, setProfile, logout } = useAppState();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<ProfileType>(profile);
   const [addingFam, setAddingFam] = useState(false);
@@ -27,10 +26,6 @@ export function ProfileScreen({ navigation }: Props) {
     relation: 'Kid',
     age: '',
   });
-
-  if (isEmpty) {
-    return <EmptyProfile onBack={() => navigation.goBack()} onLogout={logout} />;
-  }
 
   const v = editing ? draft : profile;
   const checks = [
@@ -88,7 +83,6 @@ export function ProfileScreen({ navigation }: Props) {
               {v.street} · here {v.yearsIn.toLowerCase()}
             </Text>
             <Text style={styles.profession}>{v.profession}</Text>
-            <Text style={styles.helped}>Helped 12 neighbors 🌟</Text>
           </View>
         </View>
 

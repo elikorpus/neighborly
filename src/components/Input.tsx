@@ -7,10 +7,20 @@ export type InputProps = {
   value: string;
   onChangeText: (v: string) => void;
   placeholder?: string;
-} & Pick<TextInputProps, 'keyboardType' | 'autoCapitalize'>;
+} & Pick<TextInputProps, 'keyboardType' | 'autoCapitalize' | 'secureTextEntry' | 'autoComplete' | 'textContentType'>;
 
 /** Labeled text field — uppercase eyebrow label + card-bordered input, per Input.jsx. */
-export function Input({ label, value, onChangeText, placeholder, keyboardType, autoCapitalize }: InputProps) {
+export function Input({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  keyboardType,
+  autoCapitalize,
+  secureTextEntry,
+  autoComplete,
+  textContentType,
+}: InputProps) {
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
@@ -21,6 +31,9 @@ export function Input({ label, value, onChangeText, placeholder, keyboardType, a
         placeholderTextColor={theme.colors.inkSoft}
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
+        secureTextEntry={secureTextEntry}
+        autoComplete={autoComplete}
+        textContentType={textContentType}
         style={styles.input}
       />
     </View>

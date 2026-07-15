@@ -6,7 +6,7 @@ export type PersonSummary = {
 };
 
 export type FamilyMember = {
-  id?: number;
+  id?: string;
   name: string;
   relation: 'Spouse' | 'Kid' | 'Pet';
   age: string;
@@ -117,13 +117,21 @@ export type NotificationGo =
   | { type: 'person'; id: string };
 
 export type NotificationItem = {
-  id: number;
+  id: string;
   emoji: string;
   tint: string;
   title: string;
   sub: string;
   time: string;
   go: NotificationGo;
+};
+
+export type Announcement = {
+  id: string;
+  title: string;
+  body: string;
+  authorName: string;
+  createdAt: string;
 };
 
 export type House = {

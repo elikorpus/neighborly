@@ -6,7 +6,6 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Chip } from '../components/Chip';
 import { PillTag } from '../components/PillTag';
-import { PROS } from '../data';
 import { EMPTY_STATES } from '../data/emptyStates';
 import { useAppNavigation } from '../navigation/useAppNavigation';
 import { EmptyTab } from './empty';
@@ -18,12 +17,12 @@ type TabName = (typeof TABS)[number];
 
 export function AskScreen() {
   const navigation = useAppNavigation();
-  const { asks, addAsk, fines, votes, vote, isEmpty } = useAppState();
+  const { asks, addAsk, fines, votes, vote, pros } = useAppState();
   const [tab, setTab] = useState<TabName>('Open asks');
   const [composing, setComposing] = useState(false);
   const [draft, setDraft] = useState('');
 
-  if (isEmpty) return <EmptyTab config={EMPTY_STATES.ask} />;
+  if (asks.length === 0 && fines.length === 0 && pros.length === 0) return <EmptyTab config={EMPTY_STATES.ask} />;
 
   const submit = () => {
     if (!draft.trim()) return;
@@ -98,7 +97,7 @@ export function AskScreen() {
       )}
 
       {tab === 'Trusted pros' &&
-        PROS.map((p) => (
+        pros.map((p) => (
           <Card key={p.name} style={{ marginBottom: 12 }}>
             <View style={styles.proRow}>
               <View style={{ flex: 1 }}>

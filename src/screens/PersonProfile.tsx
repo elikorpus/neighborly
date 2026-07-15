@@ -7,7 +7,6 @@ import { BackBar } from '../components/BackBar';
 import { Card } from '../components/Card';
 import { PillTag } from '../components/PillTag';
 import { SectionLabel } from '../components/SectionLabel';
-import { CLUBS, PEOPLE } from '../data';
 import { AppStackParamList } from '../navigation/types';
 import { useAppState } from '../state/AppStateContext';
 import { theme } from '../theme';
@@ -16,10 +15,19 @@ type Props = NativeStackScreenProps<AppStackParamList, 'PersonProfile'>;
 
 export function PersonProfileScreen({ route, navigation }: Props) {
   const { personId } = route.params;
-  const p = PEOPLE[personId];
-  const { wavedIds, sendWave } = useAppState();
+  const { directory, clubs: allClubs, wavedIds, sendWave } = useAppState();
+  const p = directory.find((d) => d.id === personId);
+
+  if (!p) {
+    return (
+      <View style={styles.screen}>
+        <BackBar title="Neighbor" onBack={() => navigation.goBack()} />
+      </View>
+    );
+  }
+
   const hi = wavedIds.includes(p.id) || p.connected;
-  const clubs = p.clubs.map((id) => CLUBS.find((c) => c.id === id)).filter((c): c is NonNullable<typeof c> => !!c);
+  const clubs = p.clubs.map((id) => allClubs.find((c) => c.id === id)).filter((c): c is NonNullable<typeof c> => !!c);
 
   return (
     <View style={styles.screen}>
@@ -110,18 +118,26 @@ export function PersonProfileScreen({ route, navigation }: Props) {
             </>
           )}
 
-          <SectionLabel>Contact</SectionLabel>
-          <Card style={{ marginBottom: 16 }}>
-            <View style={styles.contactRow}>
-              <Phone size={14} color={theme.colors.inkSoft} />
-              <Text style={styles.contactText}>{p.phone}</Text>
-            </View>
-            <View style={[styles.contactRow, styles.rowBorder]}>
-              <Mail size={14} color={theme.colors.inkSoft} />
-              <Text style={styles.contactText}>{p.email}</Text>
-            </View>
-          </Card>
-          <Text style={styles.footnote}>Contact details are shared by neighbors who opted into the directory.</Text>
+          {(!!p.phone || !!p.email) && (
+            <>
+              <SectionLabel>Contact</SectionLabel>
+              <Card style={{ marginBottom: 16 }}>
+                {!!p.phone && (
+                  <View style={styles.contactRow}>
+                    <Phone size={14} color={theme.colors.inkSoft} />
+                    <Text style={styles.contactText}>{p.phone}</Text>
+                  </View>
+                )}
+                {!!p.email && (
+                  <View style={[styles.contactRow, !!p.phone && styles.rowBorder]}>
+                    <Mail size={14} color={theme.colors.inkSoft} />
+                    <Text style={styles.contactText}>{p.email}</Text>
+                  </View>
+                )}
+              </Card>
+              <Text style={styles.footnote}>Contact details are shared by neighbors who opted into the directory.</Text>
+            </>
+          )}
         </View>
       </ScrollView>
     </View>

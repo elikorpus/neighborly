@@ -5,7 +5,6 @@ import { Avatar } from '../components/Avatar';
 import { Card } from '../components/Card';
 import { PillTag } from '../components/PillTag';
 import { SectionLabel } from '../components/SectionLabel';
-import { CLUBS, MATCHES } from '../data';
 import { EMPTY_STATES } from '../data/emptyStates';
 import { useAppNavigation } from '../navigation/useAppNavigation';
 import { EmptyTab } from './empty';
@@ -14,21 +13,21 @@ import { theme } from '../theme';
 
 export function MeetScreen() {
   const navigation = useAppNavigation();
-  const { wavedIds, sendWave, isEmpty } = useAppState();
+  const { wavedIds, sendWave, matches, clubs } = useAppState();
 
-  if (isEmpty) return <EmptyTab config={EMPTY_STATES.meet} />;
+  if (matches.length === 0 && clubs.length === 0) return <EmptyTab config={EMPTY_STATES.meet} />;
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.headerBlock}>
         <Text style={styles.h1}>
-          You have <Text style={{ color: theme.colors.grass }}>18 neighbors</Text> you'd probably enjoy meeting.
+          You have <Text style={{ color: theme.colors.grass }}>{matches.length} neighbors</Text> you'd probably enjoy meeting.
         </Text>
         <Text style={styles.lead}>Matched on shared interests, within a 5-minute walk. They only see you if you both say hi.</Text>
       </View>
 
       <SectionLabel>Your matches</SectionLabel>
-      {MATCHES.map((n, i) => {
+      {matches.map((n, i) => {
         const hi = wavedIds.includes(n.id);
         return (
           <Card key={n.id} onPress={() => navigation.navigate('PersonProfile', { personId: n.id })} style={{ marginBottom: 12 }}>
@@ -62,8 +61,8 @@ export function MeetScreen() {
       })}
 
       <View style={{ marginTop: 24 }}>
-        <SectionLabel>Clubs in Cypress Bend</SectionLabel>
-        {CLUBS.map((c) => (
+        <SectionLabel>Clubs in your community</SectionLabel>
+        {clubs.map((c) => (
           <Pressable
             key={c.id}
             onPress={() => navigation.navigate('ClubProfile', { clubId: c.id })}

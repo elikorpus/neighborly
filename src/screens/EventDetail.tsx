@@ -6,7 +6,6 @@ import { Avatar } from '../components/Avatar';
 import { BackBar } from '../components/BackBar';
 import { Card } from '../components/Card';
 import { SectionLabel } from '../components/SectionLabel';
-import { EVENTS } from '../data';
 import { AppStackParamList } from '../navigation/types';
 import { useAppState } from '../state/AppStateContext';
 import { theme } from '../theme';
@@ -15,8 +14,17 @@ type Props = NativeStackScreenProps<AppStackParamList, 'EventDetail'>;
 
 export function EventDetailScreen({ route, navigation }: Props) {
   const { eventId } = route.params;
-  const ev = EVENTS.find((e) => e.id === eventId)!;
-  const { eventRsvps, toggleEventRsvp } = useAppState();
+  const { events, eventRsvps, toggleEventRsvp } = useAppState();
+  const ev = events.find((e) => e.id === eventId);
+
+  if (!ev) {
+    return (
+      <View style={styles.screen}>
+        <BackBar title="Event" onBack={() => navigation.goBack()} />
+      </View>
+    );
+  }
+
   const going = eventRsvps[ev.id];
   const count = ev.going + (going === ev.rsvp ? 0 : going ? 1 : -1);
 
