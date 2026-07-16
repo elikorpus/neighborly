@@ -19,6 +19,13 @@ const inputStyle: React.CSSProperties = {
   appearance: 'none',
   fontFamily: theme.font.bodyRegular,
   fontSize: 15,
+  // Native date/time inputs can size their internal shadow-DOM segments using a
+  // different implicit height when empty vs. when a value is set, making the box
+  // change height as you fill it in, and can render slightly taller than a plain
+  // text input even with the same line-height. Pinning an explicit height (same
+  // value as Input.tsx) keeps the box a fixed size that matches other fields.
+  lineHeight: '22px',
+  height: 45,
   color: theme.colors.ink,
   padding: '10px 12px',
   borderRadius: theme.radius.md,

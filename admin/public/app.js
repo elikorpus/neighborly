@@ -183,7 +183,10 @@ async function loadResidents() {
         <td>${p.name || '(no name yet)'}</td>
         <td>${p.street || ''}</td>
         <td><span class="pill ${p.isBoardMember ? 'on' : 'off'}">${p.isBoardMember ? 'Board member' : 'Resident'}</span></td>
-        <td><button class="row-btn ghost-btn" data-toggle-board="${p.id}" data-current="${p.isBoardMember}">${p.isBoardMember ? 'Remove from board' : 'Make HOA board'}</button></td>
+        <td>
+          <button class="row-btn ghost-btn" data-toggle-board="${p.id}" data-current="${p.isBoardMember}">${p.isBoardMember ? 'Remove from board' : 'Make HOA board'}</button>
+          <button class="row-btn danger-btn" data-delete-profile="${p.id}" data-name="${p.name || 'this resident'}">Delete</button>
+        </td>
       </tr>`
     )
     .join('');
@@ -194,6 +197,19 @@ async function loadResidents() {
       btn.disabled = true;
       try {
         await api(`/profiles/${id}/board`, { method: 'POST', body: JSON.stringify({ isBoardMember: next }) });
+        await loadResidents();
+      } catch (err) {
+        alert(err.message);
+        btn.disabled = false;
+      }
+    });
+  });
+  tbody.querySelectorAll('[data-delete-profile]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!confirm(`Delete ${btn.dataset.name}? This deletes their login and all their data (asks, posts, messages, RSVPs). Their house reverts to unclaimed.`)) return;
+      btn.disabled = true;
+      try {
+        await api(`/profiles/${btn.dataset.deleteProfile}`, { method: 'DELETE' });
         await loadResidents();
       } catch (err) {
         alert(err.message);

@@ -1,11 +1,12 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Calendar, Check, MapPin, Send, Trash2 } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Avatar } from '../components/Avatar';
 import { BackBar } from '../components/BackBar';
 import { Card } from '../components/Card';
 import { SectionLabel } from '../components/SectionLabel';
+import { confirmAndRun } from '../lib/alert';
 import { AppStackParamList } from '../navigation/types';
 import { useAppState } from '../state/AppStateContext';
 import { theme } from '../theme';
@@ -158,12 +159,7 @@ export function ClubProfileScreen({ route, navigation }: Props) {
                 {isBoardMember && (
                   <Pressable
                     hitSlop={8}
-                    onPress={() =>
-                      Alert.alert('Delete post?', 'This removes it for everyone in the club.', [
-                        { text: 'Cancel', style: 'cancel' },
-                        { text: 'Delete', style: 'destructive', onPress: () => deleteClubPost(p.id) },
-                      ])
-                    }
+                    onPress={() => confirmAndRun('Delete post?', 'This removes it for everyone in the club.', 'Delete', () => deleteClubPost(p.id))}
                   >
                     <Trash2 size={16} color={theme.colors.inkSoft} />
                   </Pressable>

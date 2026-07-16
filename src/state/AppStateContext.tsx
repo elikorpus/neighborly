@@ -24,6 +24,7 @@ import {
   Spot,
 } from '../data/types';
 import {
+  AskHideRow,
   AskMessageRow,
   AskRow,
   BoardMessageRow,
@@ -191,6 +192,9 @@ type AppState = {
   // asks + votes
   addAsk: (text: string, kind?: 'Borrow' | 'Favor' | 'Recommend' | 'Ask') => void;
   sendChatMessage: (askId: string, text: string) => void;
+  hiddenAskIds: string[];
+  hideAsk: (askId: string) => Promise<void>;
+  unhideAsk: (askId: string) => Promise<void>;
   votes: Record<string, Vote>;
   vote: (fineId: string, which: Vote) => void;
   addFine: (args: { desc: string; addr: string; amount: number; comment: string }) => Promise<void>;
@@ -242,6 +246,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const [eventRsvpRows, setEventRsvpRows] = useState<EventRsvpRow[]>([]);
   const [askRows, setAskRows] = useState<AskRow[]>([]);
   const [askMessageRows, setAskMessageRows] = useState<AskMessageRow[]>([]);
+  const [askHideRows, setAskHideRows] = useState<AskHideRow[]>([]);
   const [fineRows, setFineRows] = useState<FineRow[]>([]);
   const [fineVoteRows, setFineVoteRows] = useState<FineVoteRow[]>([]);
   const [proRows, setProRows] = useState<ProRow[]>([]);
@@ -303,6 +308,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       eventRsvpRes,
       askRes,
       askMessageRes,
+      askHideRes,
       fineRes,
       fineVoteRes,
       proRes,
@@ -329,6 +335,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       supabase.from('event_rsvps').select('*'),
       supabase.from('asks').select('*').order('created_at', { ascending: false }),
       supabase.from('ask_messages').select('*').order('created_at', { ascending: true }),
+      supabase.from('ask_hides').select('*').eq('profile_id', uid),
       supabase.from('fines').select('*'),
       supabase.from('fine_votes').select('*'),
       supabase.from('pros').select('*'),
@@ -364,6 +371,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     setEventRsvpRows((eventRsvpRes.data ?? []) as EventRsvpRow[]);
     setAskRows((askRes.data ?? []) as AskRow[]);
     setAskMessageRows((askMessageRes.data ?? []) as AskMessageRow[]);
+    setAskHideRows((askHideRes.data ?? []) as AskHideRow[]);
     setFineRows((fineRes.data ?? []) as FineRow[]);
     setFineVoteRows((fineVoteRes.data ?? []) as FineVoteRow[]);
     setProRows((proRes.data ?? []) as ProRow[]);
@@ -400,6 +408,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       setEventRsvpRows([]);
       setAskRows([]);
       setAskMessageRows([]);
+      setAskHideRows([]);
       setFineRows([]);
       setFineVoteRows([]);
       setProRows([]);
@@ -814,6 +823,28 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       };
     });
   }, [askRows, askMessageRows, profilesById, myRow]);
+
+  const hiddenAskIds: string[] = useMemo(() => askHideRows.map((r) => r.ask_id), [askHideRows]);
+
+  const hideAsk = useCallback(
+    async (askId: string) => {
+      if (!myRow) return;
+      const { error } = await supabase.from('ask_hides').insert({ ask_id: askId, profile_id: myRow.id });
+      if (error) return;
+      setAskHideRows((rows) => [...rows, { ask_id: askId, profile_id: myRow.id, created_at: new Date().toISOString() }]);
+    },
+    [myRow]
+  );
+
+  const unhideAsk = useCallback(
+    async (askId: string) => {
+      if (!myRow) return;
+      const { error } = await supabase.from('ask_hides').delete().eq('ask_id', askId).eq('profile_id', myRow.id);
+      if (error) return;
+      setAskHideRows((rows) => rows.filter((r) => r.ask_id !== askId));
+    },
+    [myRow]
+  );
 
   const fines: Fine[] = useMemo(() => {
     return fineRows.map((row) => {
@@ -1277,6 +1308,9 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       unreadNotificationCount,
       addAsk,
       sendChatMessage,
+      hiddenAskIds,
+      hideAsk,
+      unhideAsk,
       votes,
       vote,
       addFine,
@@ -1343,6 +1377,9 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       unreadNotificationCount,
       addAsk,
       sendChatMessage,
+      hiddenAskIds,
+      hideAsk,
+      unhideAsk,
       votes,
       vote,
       addFine,

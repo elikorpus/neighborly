@@ -1,7 +1,7 @@
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { MapPin, Plus, Search, Trash2, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Avatar } from '../components/Avatar';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -11,6 +11,7 @@ import { PillTag } from '../components/PillTag';
 import { PopIn } from '../components/PopIn';
 import { SectionLabel } from '../components/SectionLabel';
 import { buildEmptyStates } from '../data/emptyStates';
+import { confirmAndRun } from '../lib/alert';
 import { useAppNavigation } from '../navigation/useAppNavigation';
 import { TabParamList } from '../navigation/types';
 import { useAppState } from '../state/AppStateContext';
@@ -135,10 +136,7 @@ export function DiscoverScreen() {
                   <Pressable
                     hitSlop={8}
                     onPress={() =>
-                      Alert.alert('Remove this spot?', 'This removes it for everyone in the community.', [
-                        { text: 'Cancel', style: 'cancel' },
-                        { text: 'Remove', style: 'destructive', onPress: () => deleteSpot(s.id) },
-                      ])
+                      confirmAndRun('Remove this spot?', 'This removes it for everyone in the community.', 'Remove', () => deleteSpot(s.id))
                     }
                   >
                     <Trash2 size={15} color={theme.colors.inkSoft} />

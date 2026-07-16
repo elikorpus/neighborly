@@ -119,6 +119,8 @@ export type AskMessageRow = {
   created_at: string;
 };
 
+export type AskHideRow = { ask_id: string; profile_id: string; created_at: string };
+
 export type FineRow = {
   id: string;
   community_id: string;

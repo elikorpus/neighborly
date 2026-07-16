@@ -1,11 +1,12 @@
 import { Calendar, Check, ChevronRight, Send, Trash2 } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Avatar } from '../components/Avatar';
 import { Card } from '../components/Card';
 import { PopIn } from '../components/PopIn';
 import { SectionLabel } from '../components/SectionLabel';
 import { buildEmptyStates } from '../data/emptyStates';
+import { confirmAndRun } from '../lib/alert';
 import { useAppNavigation } from '../navigation/useAppNavigation';
 import { useAppState } from '../state/AppStateContext';
 import { theme } from '../theme';
@@ -196,12 +197,7 @@ export function TodayScreen() {
                 {isBoardMember && (
                   <Pressable
                     hitSlop={8}
-                    onPress={() =>
-                      Alert.alert('Delete this post?', 'This removes it for everyone.', [
-                        { text: 'Cancel', style: 'cancel' },
-                        { text: 'Delete', style: 'destructive', onPress: () => deletePost(p.id) },
-                      ])
-                    }
+                    onPress={() => confirmAndRun('Delete this post?', 'This removes it for everyone.', 'Delete', () => deletePost(p.id))}
                   >
                     <Trash2 size={16} color={theme.colors.inkSoft} />
                   </Pressable>

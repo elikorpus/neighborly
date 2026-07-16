@@ -2,12 +2,13 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as ExpoCalendar from 'expo-calendar';
 import { Calendar, Check, MapPin } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Avatar } from '../components/Avatar';
 import { BackBar } from '../components/BackBar';
 import { Card } from '../components/Card';
 import { SectionLabel } from '../components/SectionLabel';
 import { EventItem } from '../data/types';
+import { confirmAndRun, notify } from '../lib/alert';
 import { AppStackParamList } from '../navigation/types';
 import { useAppState } from '../state/AppStateContext';
 import { theme } from '../theme';
@@ -36,19 +37,19 @@ function parseEventStart(ev: EventItem): Date {
 async function addToDeviceCalendar(ev: EventItem) {
   const perm = await ExpoCalendar.requestCalendarPermissions();
   if (!perm.granted) {
-    Alert.alert('Calendar access needed', 'Enable calendar access for Neighborly in Settings to add this event.');
+    notify('Calendar access needed', 'Enable calendar access for Neighborly in Settings to add this event.');
     return;
   }
   const calendars = await ExpoCalendar.getCalendars(ExpoCalendar.EntityTypes.EVENT);
   const target = calendars.find((c) => c.allowsModifications) ?? calendars[0];
   if (!target) {
-    Alert.alert('No calendar found', "We couldn't find a calendar on this device to add the event to.");
+    notify('No calendar found', "We couldn't find a calendar on this device to add the event to.");
     return;
   }
   const startDate = parseEventStart(ev);
   const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
   await target.createEvent({ title: ev.title, startDate, endDate, location: ev.where, notes: ev.desc });
-  Alert.alert('Added', `${ev.title} is now on your calendar.`);
+  notify('Added', `${ev.title} is now on your calendar.`);
 }
 
 export function EventDetailScreen({ route, navigation }: Props) {
@@ -152,7 +153,7 @@ export function EventDetailScreen({ route, navigation }: Props) {
               try {
                 await addToDeviceCalendar(ev);
               } catch {
-                Alert.alert('Couldn’t add event', 'Something went wrong adding this to your calendar.');
+                notify('Couldn’t add event', 'Something went wrong adding this to your calendar.');
               } finally {
                 setAddingToCalendar(false);
               }
@@ -164,17 +165,10 @@ export function EventDetailScreen({ route, navigation }: Props) {
             <Pressable
               style={styles.deleteBtn}
               onPress={() =>
-                Alert.alert('Delete this event?', 'This removes it for everyone and cancels all RSVPs.', [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                      await deleteEvent(ev.id);
-                      navigation.goBack();
-                    },
-                  },
-                ])
+                confirmAndRun('Delete this event?', 'This removes it for everyone and cancels all RSVPs.', 'Delete', async () => {
+                  await deleteEvent(ev.id);
+                  navigation.goBack();
+                })
               }
             >
               <Text style={styles.deleteBtnText}>Delete event (board)</Text>

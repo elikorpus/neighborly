@@ -203,6 +203,18 @@ app.post(
   })
 );
 
+app.delete(
+  '/api/profiles/:id',
+  asyncRoute(async (req, res) => {
+    // profiles.id references auth.users(id) on delete cascade, so deleting the
+    // auth user cascades to the profile and everything tied to it (asks, posts,
+    // messages, RSVPs, waves, etc.); their house (if any) reverts to unclaimed.
+    const { error } = await supabase.auth.admin.deleteUser(req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  })
+);
+
 // ---------------------------------------------------------------------------
 // Realtor signup keys (self-serve realtor onboarding codes)
 // ---------------------------------------------------------------------------
