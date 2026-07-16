@@ -1,14 +1,22 @@
 import { Plus } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { EmptyStateConfig } from '../../data/emptyStates';
 import { theme } from '../../theme';
 import { Blob } from './Blob';
 import { EmptyMap } from './EmptyMap';
 
-export function EmptyTab({ config, isDiscover = false }: { config: EmptyStateConfig; isDiscover?: boolean }) {
-  const [done, setDone] = useState(false);
-
+export function EmptyTab({
+  config,
+  isDiscover = false,
+  communityName = '',
+  onCta,
+}: {
+  config: EmptyStateConfig;
+  isDiscover?: boolean;
+  communityName?: string;
+  onCta: () => void;
+}) {
   return (
     <ScrollView contentContainerStyle={styles.screen}>
       <Text style={styles.eyebrow}>{config.eyebrow}</Text>
@@ -22,20 +30,13 @@ export function EmptyTab({ config, isDiscover = false }: { config: EmptyStateCon
           </View>
         )}
       </View>
-      <Pressable
-        onPress={() => setDone(true)}
-        style={[styles.cta, { backgroundColor: done ? theme.colors.paper : theme.colors.grass, borderColor: theme.colors.grass }]}
-      >
-        {done ? (
-          <Text style={[styles.ctaText, { color: theme.colors.grassDeep }]}>Nice — you're getting started 🌿</Text>
-        ) : (
-          <View style={styles.ctaRow}>
-            <Plus size={16} color="#fff" />
-            <Text style={[styles.ctaText, { color: '#fff' }]}>{config.cta}</Text>
-          </View>
-        )}
+      <Pressable onPress={onCta} style={[styles.cta, { backgroundColor: theme.colors.grass, borderColor: theme.colors.grass }]}>
+        <View style={styles.ctaRow}>
+          <Plus size={16} color="#fff" />
+          <Text style={[styles.ctaText, { color: '#fff' }]}>{config.cta}</Text>
+        </View>
       </Pressable>
-      <Text style={styles.footnote}>Cypress Bend is brand new on Neighborly. It fills up fast.</Text>
+      <Text style={styles.footnote}>{communityName || 'Your community'} is brand new on Neighborly. It fills up fast.</Text>
     </ScrollView>
   );
 }

@@ -23,4 +23,10 @@ export type AppStackParamList = {
 export type AuthStackParamList = {
   Login: undefined;
   Onboarding: undefined;
+  RealtorSignup: undefined;
+};
+
+export type RealtorStackParamList = {
+  RealtorCommunities: undefined;
+  RealtorCommunityDetail: { communityId: string; name: string };
 };

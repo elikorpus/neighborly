@@ -1,22 +1,31 @@
-import { Bot, Landmark, Send } from 'lucide-react-native';
+import { Bot, Landmark, Plus, Send } from 'lucide-react-native';
 import React, { useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Chip } from '../components/Chip';
+import { Input } from '../components/Input';
 import { SectionLabel } from '../components/SectionLabel';
-import { EMPTY_STATES } from '../data/emptyStates';
+import { buildEmptyStates } from '../data/emptyStates';
 import { useAppState } from '../state/AppStateContext';
 import { theme } from '../theme';
 import { EmptyTab } from './empty';
 
 type Message = { from: 'you' | 'them'; text: string };
-type Mode = 'board' | 'ai' | 'announcements';
+type Mode = 'board' | 'ai' | 'announcements' | 'tools';
 
 const AI_PLACEHOLDER =
   "The AI rules assistant will be live once Neighborly's backend is connected — for now, message the board directly.";
 
+const ENTITY_LABEL: Record<string, string> = {
+  club_post: '💬 Club post',
+  event: '📅 Event',
+  community_spot: '📍 Spot',
+  ask: '🤝 Ask',
+};
+
 export function HOAScreen() {
-  const { boardMessages, sendBoardMessage, announcements } = useAppState();
+  const { boardMessages, sendBoardMessage, announcements, addAnnouncement, communityName, isBoardMember, moderationLog } = useAppState();
   const [mode, setMode] = useState<Mode>('board');
   const [ai, setAi] = useState<Message[]>([
     {
@@ -26,8 +35,14 @@ export function HOAScreen() {
   ]);
   const [text, setText] = useState('');
   const scrollRef = useRef<ScrollView>(null);
+  const [showEmpty, setShowEmpty] = useState(true);
+  const [composingAnnouncement, setComposingAnnouncement] = useState(false);
+  const [announcementDraft, setAnnouncementDraft] = useState({ title: '', body: '' });
 
-  if (boardMessages.length === 0 && announcements.length === 0) return <EmptyTab config={EMPTY_STATES.hoa} />;
+  if (boardMessages.length === 0 && announcements.length === 0 && showEmpty)
+    return (
+      <EmptyTab config={buildEmptyStates(communityName).hoa} communityName={communityName} onCta={() => setShowEmpty(false)} />
+    );
 
   const msgs = mode === 'board' ? boardMessages : ai;
 
@@ -58,12 +73,78 @@ export function HOAScreen() {
           <Chip active={mode === 'ai'} onPress={() => setMode('ai')}>
             🤖 Rules assistant
           </Chip>
+          {isBoardMember && (
+            <Chip active={mode === 'tools'} onPress={() => setMode('tools')}>
+              🛠 Board tools
+            </Chip>
+          )}
         </View>
       </View>
 
-      {mode === 'announcements' ? (
+      {mode === 'tools' ? (
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.messages}>
+          <SectionLabel>Moderation log</SectionLabel>
+          <Text style={styles.toolsNote}>Only board members can see this. Every delete made by a board member — anywhere in the app — shows up here.</Text>
+          {moderationLog.length === 0 && <Text style={styles.emptyAnnouncements}>Nothing's been removed yet.</Text>}
+          {moderationLog.map((m) => (
+            <Card key={m.id} style={{ marginBottom: 12 }}>
+              <View style={styles.logHead}>
+                <Text style={styles.logType}>{ENTITY_LABEL[m.entityType] ?? m.entityType}</Text>
+                <Text style={styles.logWhen}>{m.when}</Text>
+              </View>
+              <Text style={styles.logSummary} numberOfLines={2}>
+                “{m.summary}”
+              </Text>
+              <Text style={styles.logWho}>Removed by {m.who}</Text>
+            </Card>
+          ))}
+        </ScrollView>
+      ) : mode === 'announcements' ? (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.messages}>
           <SectionLabel>Board announcements</SectionLabel>
+          {isBoardMember &&
+            (composingAnnouncement ? (
+              <Card style={{ marginBottom: 12 }}>
+                <Input label="Title" value={announcementDraft.title} onChangeText={(t) => setAnnouncementDraft({ ...announcementDraft, title: t })} />
+                <Text style={styles.composeLabel}>Message</Text>
+                <TextInput
+                  value={announcementDraft.body}
+                  onChangeText={(t) => setAnnouncementDraft({ ...announcementDraft, body: t })}
+                  placeholder="What should the neighborhood know?"
+                  placeholderTextColor={theme.colors.inkSoft}
+                  multiline
+                  style={styles.announcementInput}
+                />
+                <View style={styles.rowGap}>
+                  <View style={{ flex: 1 }}>
+                    <Button
+                      variant="dark"
+                      size="md"
+                      onPress={async () => {
+                        if (!announcementDraft.title.trim() || !announcementDraft.body.trim()) return;
+                        await addAnnouncement(announcementDraft.title.trim(), announcementDraft.body.trim());
+                        setAnnouncementDraft({ title: '', body: '' });
+                        setComposingAnnouncement(false);
+                      }}
+                    >
+                      Post announcement
+                    </Button>
+                  </View>
+                  <Button variant="outline" size="md" block={false} onPress={() => setComposingAnnouncement(false)} style={{ paddingHorizontal: 16 }}>
+                    Cancel
+                  </Button>
+                </View>
+              </Card>
+            ) : (
+              <Button
+                onPress={() => setComposingAnnouncement(true)}
+                variant="outline"
+                leading={<Plus size={16} color={theme.colors.ink} />}
+                style={{ marginBottom: 12 }}
+              >
+                New announcement
+              </Button>
+            ))}
           {announcements.length === 0 && <Text style={styles.emptyAnnouncements}>No announcements yet.</Text>}
           {announcements.map((a) => (
             <Card key={a.id} style={{ marginBottom: 12 }}>
@@ -132,12 +213,33 @@ export function HOAScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.paper },
+  rowGap: { flexDirection: 'row', gap: 8 },
+  composeLabel: { fontSize: 11, fontFamily: theme.font.bodyBold, color: theme.colors.inkSoft, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 },
+  announcementInput: {
+    backgroundColor: theme.colors.paper,
+    borderWidth: theme.border.width,
+    borderColor: theme.colors.line,
+    borderRadius: theme.radius.md,
+    fontSize: 14,
+    color: theme.colors.ink,
+    padding: 12,
+    height: 80,
+    textAlignVertical: 'top',
+    fontFamily: theme.font.bodyRegular,
+    marginBottom: 12,
+  },
   headerBlock: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 12 },
   h1: { fontFamily: theme.font.displaySemibold, fontSize: 28, color: theme.colors.ink },
   lead: { fontSize: 13.5, color: theme.colors.inkSoft, marginTop: 4, fontFamily: theme.font.bodyRegular },
   tabRow: { flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' },
   messages: { paddingHorizontal: 20, paddingBottom: 12 },
   emptyAnnouncements: { fontSize: 13.5, color: theme.colors.inkSoft, fontFamily: theme.font.bodySemibold, textAlign: 'center', paddingVertical: 24 },
+  toolsNote: { fontSize: 12.5, color: theme.colors.inkSoft, fontFamily: theme.font.bodyRegular, marginBottom: 16, lineHeight: 12.5 * 1.4 },
+  logHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  logType: { fontSize: 12.5, fontFamily: theme.font.bodyBold, color: theme.colors.ink },
+  logWhen: { fontSize: 11, color: theme.colors.inkSoft, fontFamily: theme.font.bodySemibold },
+  logSummary: { fontSize: 13.5, color: theme.colors.ink, marginTop: 6, fontFamily: theme.font.bodyRegular, fontStyle: 'italic' },
+  logWho: { fontSize: 11.5, color: theme.colors.grassDeep, fontFamily: theme.font.bodyBold, marginTop: 8 },
   announcementTitle: { fontSize: 15, fontFamily: theme.font.bodyBold, color: theme.colors.ink },
   announcementBody: { fontSize: 13.5, color: theme.colors.ink, marginTop: 4, fontFamily: theme.font.bodyRegular, lineHeight: 13.5 * 1.4 },
   announcementMeta: { fontSize: 11.5, color: theme.colors.inkSoft, fontFamily: theme.font.bodySemibold, marginTop: 8 },

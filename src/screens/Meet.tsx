@@ -5,7 +5,7 @@ import { Avatar } from '../components/Avatar';
 import { Card } from '../components/Card';
 import { PillTag } from '../components/PillTag';
 import { SectionLabel } from '../components/SectionLabel';
-import { EMPTY_STATES } from '../data/emptyStates';
+import { buildEmptyStates } from '../data/emptyStates';
 import { useAppNavigation } from '../navigation/useAppNavigation';
 import { EmptyTab } from './empty';
 import { useAppState } from '../state/AppStateContext';
@@ -13,9 +13,10 @@ import { theme } from '../theme';
 
 export function MeetScreen() {
   const navigation = useAppNavigation();
-  const { wavedIds, sendWave, matches, clubs } = useAppState();
+  const { wavedIds, sendWave, matches, clubs, communityName } = useAppState();
 
-  if (matches.length === 0 && clubs.length === 0) return <EmptyTab config={EMPTY_STATES.meet} />;
+  if (matches.length === 0 && clubs.length === 0)
+    return <EmptyTab config={buildEmptyStates(communityName).meet} communityName={communityName} onCta={() => navigation.navigate('Profile')} />;
 
   return (
     <ScrollView contentContainerStyle={styles.content}>

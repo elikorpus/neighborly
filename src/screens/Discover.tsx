@@ -1,14 +1,16 @@
 import { RouteProp, useRoute } from '@react-navigation/native';
-import { MapPin, Search, X } from 'lucide-react-native';
+import { MapPin, Plus, Search, Trash2, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Avatar } from '../components/Avatar';
+import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Chip } from '../components/Chip';
+import { Input } from '../components/Input';
+import { PillTag } from '../components/PillTag';
 import { PopIn } from '../components/PopIn';
 import { SectionLabel } from '../components/SectionLabel';
-import { NEIGHBORHOOD_SPOTS } from '../data';
-import { EMPTY_STATES } from '../data/emptyStates';
+import { buildEmptyStates } from '../data/emptyStates';
 import { useAppNavigation } from '../navigation/useAppNavigation';
 import { TabParamList } from '../navigation/types';
 import { useAppState } from '../state/AppStateContext';
@@ -17,14 +19,25 @@ import { EmptyTab } from './empty';
 import { HoodMap } from './HoodMap';
 
 const VIEWS = ['map', 'pages'] as const;
+const EMPTY_SPOT_DRAFT = { emoji: '📍', name: '', detail: '' };
+
+async function inviteNeighbors(communityName: string, signupKey: string) {
+  const place = communityName || 'my neighborhood';
+  const codeLine = signupKey ? `\n\nUse code ${signupKey} to sign up.` : '';
+  await Share.share({
+    message: `Join me on Neighborly in ${place} — it's the private app just for our street.${codeLine}\n\nhttps://elikorpus.github.io/neighborly/`,
+  });
+}
 
 export function DiscoverScreen() {
   const navigation = useAppNavigation();
   const route = useRoute<RouteProp<TabParamList, 'Discover'>>();
-  const { directory, houses } = useAppState();
+  const { directory, houses, spots, addSpot, communityName, signupKey, isBoardMember, deleteSpot } = useAppState();
   const [view, setView] = useState<(typeof VIEWS)[number]>('map');
   const [highlightHouse, setHighlightHouse] = useState<string | null>(route.params?.focusHouse ?? null);
   const [query, setQuery] = useState('');
+  const [addingSpot, setAddingSpot] = useState(false);
+  const [spotDraft, setSpotDraft] = useState(EMPTY_SPOT_DRAFT);
 
   useEffect(() => {
     if (route.params?.focusHouse) {
@@ -33,7 +46,15 @@ export function DiscoverScreen() {
     }
   }, [route.params?.focusHouse]);
 
-  if (directory.length === 0 && houses.length === 0) return <EmptyTab config={EMPTY_STATES.discover} isDiscover />;
+  if (directory.length === 0 && houses.length === 0)
+    return (
+      <EmptyTab
+        config={buildEmptyStates(communityName).discover}
+        communityName={communityName}
+        isDiscover
+        onCta={() => inviteNeighbors(communityName, signupKey)}
+      />
+    );
 
   const selected = directory.find((d) => d.house === highlightHouse);
   const q = query.trim().toLowerCase();
@@ -89,15 +110,73 @@ export function DiscoverScreen() {
 
           <View style={{ marginTop: 20 }}>
             <SectionLabel>Spots your neighbors added</SectionLabel>
-            {NEIGHBORHOOD_SPOTS.map(([e, n, s]) => (
-              <View key={n} style={styles.spotRow}>
-                <Text style={{ fontSize: 18 }}>{e}</Text>
+            {spots.length === 0 && !addingSpot && (
+              <Text style={styles.noSpots}>No spots yet — know a good taco truck or a great little library?</Text>
+            )}
+            {spots.map((s) => (
+              <View key={s.id} style={styles.spotRow}>
+                <Text style={{ fontSize: 18 }}>{s.emoji}</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.spotName}>{n}</Text>
-                  <Text style={styles.spotSub}>{s}</Text>
+                  <Text style={styles.spotName}>{s.name}</Text>
+                  <Text style={styles.spotSub}>{s.detail}</Text>
                 </View>
+                {isBoardMember && (
+                  <Pressable
+                    hitSlop={8}
+                    onPress={() =>
+                      Alert.alert('Remove this spot?', 'This removes it for everyone in the community.', [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Remove', style: 'destructive', onPress: () => deleteSpot(s.id) },
+                      ])
+                    }
+                  >
+                    <Trash2 size={15} color={theme.colors.inkSoft} />
+                  </Pressable>
+                )}
               </View>
             ))}
+            {addingSpot ? (
+              <Card style={{ marginTop: 12 }}>
+                <View style={styles.rowGap}>
+                  <View style={{ width: 64 }}>
+                    <Input label="Emoji" value={spotDraft.emoji} onChangeText={(t) => setSpotDraft({ ...spotDraft, emoji: t })} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Input label="Name" value={spotDraft.name} onChangeText={(t) => setSpotDraft({ ...spotDraft, name: t })} placeholder="e.g. Taco truck" />
+                  </View>
+                </View>
+                <Input
+                  label="Detail"
+                  value={spotDraft.detail}
+                  onChangeText={(t) => setSpotDraft({ ...spotDraft, detail: t })}
+                  placeholder="Where + when"
+                />
+                <View style={styles.rowGap}>
+                  <View style={{ flex: 1 }}>
+                    <Button
+                      variant="dark"
+                      size="md"
+                      onPress={async () => {
+                        if (!spotDraft.name.trim()) return;
+                        await addSpot({ emoji: spotDraft.emoji.trim() || '📍', name: spotDraft.name.trim(), detail: spotDraft.detail.trim() });
+                        setSpotDraft(EMPTY_SPOT_DRAFT);
+                        setAddingSpot(false);
+                      }}
+                    >
+                      Add spot
+                    </Button>
+                  </View>
+                  <Button variant="outline" size="md" block={false} onPress={() => setAddingSpot(false)} style={{ paddingHorizontal: 16 }}>
+                    Cancel
+                  </Button>
+                </View>
+              </Card>
+            ) : (
+              <Pressable onPress={() => setAddingSpot(true)} style={styles.addSpotBtn}>
+                <Plus size={14} color={theme.colors.grass} />
+                <Text style={styles.addSpotText}>Add a spot</Text>
+              </Pressable>
+            )}
           </View>
         </>
       ) : (
@@ -123,7 +202,10 @@ export function DiscoverScreen() {
               <View style={styles.dirRow}>
                 <Avatar initials={n.initials} bg={n.bg} size={44} tilt={i % 2 ? 3 : -3} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.dirName}>{n.name}</Text>
+                  <View style={styles.dirNameRow}>
+                    <Text style={styles.dirName}>{n.name}</Text>
+                    {n.isBoardMember && <PillTag tone="marigold">🏛 HOA</PillTag>}
+                  </View>
                   <Text style={styles.dirJob}>{n.job}</Text>
                   <Text style={styles.dirRelation}>↳ {n.relation}</Text>
                 </View>
@@ -153,6 +235,10 @@ const styles = StyleSheet.create({
   h1: { fontFamily: theme.font.displaySemibold, fontSize: 28, color: theme.colors.ink },
   lead: { fontSize: 14, color: theme.colors.inkSoft, marginTop: 4, fontFamily: theme.font.bodyRegular },
   tabRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  rowGap: { flexDirection: 'row', gap: 8 },
+  noSpots: { fontSize: 12.5, color: theme.colors.inkSoft, fontFamily: theme.font.bodyRegular, paddingVertical: 8 },
+  addSpotBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingTop: 12 },
+  addSpotText: { color: theme.colors.grass, fontFamily: theme.font.bodyBold, fontSize: 13.5 },
   mapWrap: { borderRadius: 22, borderWidth: theme.border.width, borderColor: theme.colors.line, overflow: 'hidden' },
   selectedRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   selectedName: { fontFamily: theme.font.displaySemibold, fontSize: 17, color: theme.colors.ink },
@@ -178,6 +264,7 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontSize: 14, color: theme.colors.ink, fontFamily: theme.font.bodyRegular },
   pagesNote: { fontSize: 12.5, color: theme.colors.marigoldInk, fontFamily: theme.font.bodySemibold },
   dirRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  dirNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   dirName: { fontFamily: theme.font.displaySemibold, fontSize: 16, color: theme.colors.ink },
   dirJob: { fontSize: 12.5, color: theme.colors.inkSoft, fontFamily: theme.font.bodyRegular },
   dirRelation: { fontSize: 12, color: theme.colors.grassDeep, fontFamily: theme.font.bodyBold, marginTop: 4 },

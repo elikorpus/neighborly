@@ -1,9 +1,11 @@
-import { Calendar as CalIcon, Check, ChevronRight } from 'lucide-react-native';
+import { Calendar as CalIcon, Check, ChevronRight, Plus } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Chip } from '../components/Chip';
-import { EMPTY_STATES } from '../data/emptyStates';
+import { Input } from '../components/Input';
+import { buildEmptyStates } from '../data/emptyStates';
 import { useAppNavigation } from '../navigation/useAppNavigation';
 import { EmptyTab } from './empty';
 import { useAppState } from '../state/AppStateContext';
@@ -24,15 +26,49 @@ function DateChip({ mon, day, size = 52 }: { mon: string; day: string; size?: nu
 
 const FILTERS = ["RSVP'd", 'All events'] as const;
 
+const EMPTY_DRAFT = { title: '', date: '', time: '', where: '', description: '' };
+
 export function EventsScreen() {
   const navigation = useAppNavigation();
-  const { events, eventRsvps } = useAppState();
+  const { events, eventRsvps, addEvent, communityName } = useAppState();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("RSVP'd");
+  const [showEmpty, setShowEmpty] = useState(true);
+  const [composing, setComposing] = useState(false);
+  const [draft, setDraft] = useState(EMPTY_DRAFT);
+  const [error, setError] = useState('');
 
-  if (events.length === 0) return <EmptyTab config={EMPTY_STATES.events} />;
+  if (events.length === 0 && showEmpty)
+    return (
+      <EmptyTab
+        config={buildEmptyStates(communityName).events}
+        communityName={communityName}
+        onCta={() => {
+          setShowEmpty(false);
+          setComposing(true);
+        }}
+      />
+    );
 
   const rsvpCount = events.filter((e) => eventRsvps[e.id]).length;
   const list = filter === "RSVP'd" ? events.filter((e) => eventRsvps[e.id]) : events;
+
+  const submit = async () => {
+    if (!draft.title.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(draft.date.trim())) {
+      setError('Add a title and a date like 2026-08-02.');
+      return;
+    }
+    setError('');
+    await addEvent({
+      emoji: '🎉',
+      title: draft.title.trim(),
+      eventDate: draft.date.trim(),
+      eventTime: draft.time.trim(),
+      where: draft.where.trim(),
+      description: draft.description.trim(),
+    });
+    setDraft(EMPTY_DRAFT);
+    setComposing(false);
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
@@ -40,9 +76,52 @@ export function EventsScreen() {
         <Text style={styles.h1}>Your calendar</Text>
         <Text style={styles.lead}>
           You're on the list for <Text style={styles.bold}>{rsvpCount} events</Text> — plus everything else happening
-          in Cypress Bend.
+          in {communityName || 'your neighborhood'}.
         </Text>
       </View>
+
+      {!composing ? (
+        <Button onPress={() => setComposing(true)} leading={<Plus size={17} color="#fff" />} style={{ marginBottom: 16 }}>
+          Create an event
+        </Button>
+      ) : (
+        <Card style={{ marginBottom: 16 }}>
+          <Input label="Title" value={draft.title} onChangeText={(t) => setDraft({ ...draft, title: t })} placeholder="e.g. Cul-de-sac BBQ" />
+          <Input label="Date" value={draft.date} onChangeText={(t) => setDraft({ ...draft, date: t })} placeholder="2026-08-02" />
+          <Input label="Time" value={draft.time} onChangeText={(t) => setDraft({ ...draft, time: t })} placeholder="6:00 PM" />
+          <Input label="Where" value={draft.where} onChangeText={(t) => setDraft({ ...draft, where: t })} placeholder="e.g. the cul-de-sac" />
+          <Text style={styles.composeLabel}>Details</Text>
+          <TextInput
+            value={draft.description}
+            onChangeText={(t) => setDraft({ ...draft, description: t })}
+            placeholder="What should neighbors know?"
+            placeholderTextColor={theme.colors.inkSoft}
+            multiline
+            style={styles.composeInput}
+          />
+          {!!error && <Text style={styles.errorText}>{error}</Text>}
+          <View style={styles.rowGap}>
+            <View style={{ flex: 1 }}>
+              <Button variant="dark" size="md" onPress={submit}>
+                Post to {communityName || 'your neighborhood'}
+              </Button>
+            </View>
+            <Button
+              variant="outline"
+              size="md"
+              block={false}
+              onPress={() => {
+                setComposing(false);
+                setDraft(EMPTY_DRAFT);
+                setError('');
+              }}
+              style={{ paddingHorizontal: 16 }}
+            >
+              Cancel
+            </Button>
+          </View>
+        </Card>
+      )}
 
       <View style={styles.tabRow}>
         {FILTERS.map((t) => (
@@ -99,6 +178,22 @@ const styles = StyleSheet.create({
   lead: { fontSize: 14, color: theme.colors.inkSoft, marginTop: 4, fontFamily: theme.font.bodyRegular },
   bold: { color: theme.colors.grass, fontFamily: theme.font.bodyBold },
   tabRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  composeLabel: { fontSize: 11, fontFamily: theme.font.bodyBold, color: theme.colors.inkSoft, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 },
+  composeInput: {
+    backgroundColor: theme.colors.paper,
+    borderWidth: theme.border.width,
+    borderColor: theme.colors.line,
+    borderRadius: theme.radius.md,
+    fontSize: 14,
+    color: theme.colors.ink,
+    padding: 12,
+    height: 70,
+    textAlignVertical: 'top',
+    fontFamily: theme.font.bodyRegular,
+    marginBottom: 12,
+  },
+  errorText: { fontSize: 12, color: theme.colors.red, fontFamily: theme.font.bodySemibold, marginBottom: 8 },
+  rowGap: { flexDirection: 'row', gap: 8 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   dateChip: { borderWidth: theme.border.width, borderColor: theme.colors.ink, borderRadius: 12, overflow: 'hidden' },
   dateChipMon: { backgroundColor: theme.colors.grass, paddingVertical: 3 },

@@ -31,9 +31,11 @@ export type Person = {
   shared: string[];
   family: FamilyMember[];
   clubs: string[];
+  isBoardMember: boolean;
 };
 
 export type ClubPost = {
+  id: string;
   who: string;
   initials: string;
   bg: string;
@@ -62,6 +64,56 @@ export type Club = {
   rules: string[];
   posts: ClubPost[];
   roster: ClubMember[];
+};
+
+export type Spot = {
+  id: string;
+  emoji: string;
+  name: string;
+  detail: string;
+};
+
+export type Realtor = {
+  id: string;
+  name: string;
+  tag: string;
+  dealsNote: string;
+  phone: string;
+  email: string;
+};
+
+export type NeighborhoodTrend = {
+  label: string;
+  value: string;
+  note: string;
+};
+
+export type RealtorProfile = {
+  name: string;
+  tag: string;
+  phone: string;
+  email: string;
+};
+
+export type CommunityBreakdown = {
+  communityId: string;
+  householdCount: number;
+  housesTotal: number;
+  kidsCount: number;
+  eventsLast90d: number;
+  avgResponseMinutes: number | null;
+  connectedRate: number | null;
+  clubParticipationRate: number | null;
+  welcomeRate: number | null;
+  score: number | null;
+};
+
+export type ModerationLogEntry = {
+  id: string;
+  entityType: 'club_post' | 'event' | 'community_spot' | 'ask';
+  summary: string;
+  who: string;
+  when: string;
 };
 
 export type EventItem = {
@@ -156,10 +208,11 @@ export type MatchNeighbor = {
 };
 
 export type Neighborhood = {
+  id: string;
   name: string;
-  score: number;
-  you?: boolean;
-  blurb: string;
-  kids: string;
-  events: number;
+  score: number | null;
+  you: boolean;
+  householdCount: number;
+  eventsPerMonth: number;
+  kidsCount: number;
 };

@@ -7,6 +7,7 @@ import { BackBar } from '../components/BackBar';
 import { Card } from '../components/Card';
 import { Chip } from '../components/Chip';
 import { Input } from '../components/Input';
+import { PillTag } from '../components/PillTag';
 import { SectionLabel } from '../components/SectionLabel';
 import { INTEREST_POOL, TENURE } from '../data/constants';
 import { FamilyMember } from '../data/types';
@@ -17,7 +18,7 @@ import { theme } from '../theme';
 type Props = NativeStackScreenProps<AppStackParamList, 'Profile'>;
 
 export function ProfileScreen({ navigation }: Props) {
-  const { profile, setProfile, logout } = useAppState();
+  const { profile, setProfile, logout, isBoardMember } = useAppState();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<ProfileType>(profile);
   const [addingFam, setAddingFam] = useState(false);
@@ -83,9 +84,12 @@ export function ProfileScreen({ navigation }: Props) {
         <View style={styles.headRow}>
           <Avatar initials={(v.firstName[0] ?? 'E') + (v.lastName[0] ?? 'L')} bg={theme.colors.sky} size={64} tilt={-4} />
           <View>
-            <Text style={styles.name}>
-              {v.firstName} {v.lastName}
-            </Text>
+            <View style={styles.nameRow}>
+              <Text style={styles.name}>
+                {v.firstName} {v.lastName}
+              </Text>
+              {isBoardMember && <PillTag tone="marigold">🏛 HOA Board</PillTag>}
+            </View>
             <Text style={styles.meta}>
               {v.street} · here {v.yearsIn.toLowerCase()}
             </Text>
@@ -265,6 +269,7 @@ const styles = StyleSheet.create({
   editText: { fontSize: 12, fontFamily: theme.font.bodyBold, color: theme.colors.grass },
   content: { padding: 20 },
   headRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   name: { fontFamily: theme.font.displaySemibold, fontSize: 22, color: theme.colors.ink },
   meta: { fontSize: 13, color: theme.colors.inkSoft, fontFamily: theme.font.bodySemibold },
   profession: { fontSize: 12.5, color: theme.colors.ink, fontFamily: theme.font.bodySemibold },

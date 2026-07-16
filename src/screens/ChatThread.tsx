@@ -12,7 +12,7 @@ type Props = NativeStackScreenProps<AppStackParamList, 'ChatThread'>;
 
 export function ChatThreadScreen({ route, navigation }: Props) {
   const { askId } = route.params;
-  const { asks, sendChatMessage } = useAppState();
+  const { asks, sendChatMessage, communityName } = useAppState();
   const ask = asks.find((a) => a.id === askId)!;
   const [text, setText] = useState('');
   const scrollRef = useRef<ScrollView>(null);
@@ -31,7 +31,7 @@ export function ChatThreadScreen({ route, navigation }: Props) {
         contentContainerStyle={styles.messages}
         onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
       >
-        <Text style={styles.kind}>{ask.kind} · Cypress Bend</Text>
+        <Text style={styles.kind}>{ask.kind}{communityName ? ` · ${communityName}` : ''}</Text>
         {ask.messages.map((m, i) => (
           <View key={i} style={[styles.row, { justifyContent: m.from === 'you' ? 'flex-end' : 'flex-start' }]}>
             <View

@@ -1,21 +1,61 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import * as ExpoCalendar from 'expo-calendar';
 import { Calendar, Check, MapPin } from 'lucide-react-native';
-import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Avatar } from '../components/Avatar';
 import { BackBar } from '../components/BackBar';
 import { Card } from '../components/Card';
 import { SectionLabel } from '../components/SectionLabel';
+import { EventItem } from '../data/types';
 import { AppStackParamList } from '../navigation/types';
 import { useAppState } from '../state/AppStateContext';
 import { theme } from '../theme';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'EventDetail'>;
 
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+function parseEventStart(ev: EventItem): Date {
+  const now = new Date();
+  const monthIndex = MONTHS.indexOf(ev.mon.toUpperCase());
+  const dayNum = parseInt(ev.day, 10);
+  let hours = 12;
+  let minutes = 0;
+  const m = ev.time.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  if (m) {
+    hours = parseInt(m[1], 10) % 24;
+    minutes = parseInt(m[2], 10);
+    const ampm = m[3]?.toUpperCase();
+    if (ampm === 'PM' && hours < 12) hours += 12;
+    if (ampm === 'AM' && hours === 12) hours = 0;
+  }
+  return new Date(now.getFullYear(), monthIndex >= 0 ? monthIndex : now.getMonth(), isNaN(dayNum) ? now.getDate() : dayNum, hours, minutes);
+}
+
+async function addToDeviceCalendar(ev: EventItem) {
+  const perm = await ExpoCalendar.requestCalendarPermissions();
+  if (!perm.granted) {
+    Alert.alert('Calendar access needed', 'Enable calendar access for Neighborly in Settings to add this event.');
+    return;
+  }
+  const calendars = await ExpoCalendar.getCalendars(ExpoCalendar.EntityTypes.EVENT);
+  const target = calendars.find((c) => c.allowsModifications) ?? calendars[0];
+  if (!target) {
+    Alert.alert('No calendar found', "We couldn't find a calendar on this device to add the event to.");
+    return;
+  }
+  const startDate = parseEventStart(ev);
+  const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+  await target.createEvent({ title: ev.title, startDate, endDate, location: ev.where, notes: ev.desc });
+  Alert.alert('Added', `${ev.title} is now on your calendar.`);
+}
+
 export function EventDetailScreen({ route, navigation }: Props) {
   const { eventId } = route.params;
-  const { events, eventRsvps, toggleEventRsvp } = useAppState();
+  const { events, eventRsvps, toggleEventRsvp, isBoardMember, deleteEvent } = useAppState();
   const ev = events.find((e) => e.id === eventId);
+  const [addingToCalendar, setAddingToCalendar] = useState(false);
 
   if (!ev) {
     return (
@@ -104,9 +144,42 @@ export function EventDetailScreen({ route, navigation }: Props) {
               <Text style={[styles.rsvpText, { color: '#fff' }]}>RSVP · {count} going</Text>
             )}
           </Pressable>
-          <Pressable style={styles.calendarBtn}>
-            <Text style={styles.calendarBtnText}>Add to my calendar</Text>
+          <Pressable
+            style={styles.calendarBtn}
+            disabled={addingToCalendar}
+            onPress={async () => {
+              setAddingToCalendar(true);
+              try {
+                await addToDeviceCalendar(ev);
+              } catch {
+                Alert.alert('Couldn’t add event', 'Something went wrong adding this to your calendar.');
+              } finally {
+                setAddingToCalendar(false);
+              }
+            }}
+          >
+            <Text style={styles.calendarBtnText}>{addingToCalendar ? 'Adding…' : 'Add to my calendar'}</Text>
           </Pressable>
+          {isBoardMember && (
+            <Pressable
+              style={styles.deleteBtn}
+              onPress={() =>
+                Alert.alert('Delete this event?', 'This removes it for everyone and cancels all RSVPs.', [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                      await deleteEvent(ev.id);
+                      navigation.goBack();
+                    },
+                  },
+                ])
+              }
+            >
+              <Text style={styles.deleteBtnText}>Delete event (board)</Text>
+            </Pressable>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -134,5 +207,7 @@ const styles = StyleSheet.create({
   rsvpBtn: { width: '100%', paddingVertical: 14, borderRadius: 16, borderWidth: 2, borderColor: theme.colors.grass, alignItems: 'center', justifyContent: 'center' },
   rsvpText: { fontFamily: theme.font.bodyBold, fontSize: 15 },
   calendarBtn: { width: '100%', marginTop: 10, paddingVertical: 12, borderRadius: 14, borderWidth: theme.border.width, borderColor: theme.colors.line, alignItems: 'center' },
+  deleteBtn: { width: '100%', marginTop: 10, paddingVertical: 12, borderRadius: 14, alignItems: 'center' },
+  deleteBtnText: { color: theme.colors.red, fontFamily: theme.font.bodyBold, fontSize: 13.5 },
   calendarBtnText: { color: theme.colors.ink, fontFamily: theme.font.bodyBold, fontSize: 14 },
 });

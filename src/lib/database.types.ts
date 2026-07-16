@@ -173,6 +173,78 @@ export type BoardMessageRow = {
 
 export type WaveRow = { from_profile_id: string; to_profile_id: string; created_at: string };
 
+export type RealtorRow = {
+  id: string;
+  community_id: string;
+  name: string;
+  tag: string;
+  deals_note: string;
+  phone: string;
+  email: string;
+  created_at: string;
+};
+
+export type HomeLeadRow = {
+  id: string;
+  community_id: string;
+  profile_id: string;
+  kind: 'list' | 'valuation' | 'realtor_contact';
+  realtor_id: string | null;
+  created_at: string;
+};
+
+export type ClubEventRsvpRow = { club_id: string; profile_id: string; going: boolean };
+
+export type CommunitySpotRow = {
+  id: string;
+  community_id: string;
+  added_by_profile_id: string | null;
+  emoji: string;
+  name: string;
+  detail: string;
+  created_at: string;
+};
+
+export type CommunityInsightsRow = {
+  community_id: string;
+  household_count: number;
+  houses_total: number;
+  kids_count: number;
+  events_last_90d: number;
+  avg_response_minutes: number | null;
+  connected_rate: number | null;
+  club_participation_rate: number | null;
+  welcome_rate: number | null;
+  score: number | null;
+};
+
+export type CommunityScoreRow = {
+  community_id: string;
+  name: string;
+  household_count: number;
+  events_per_month: number;
+  kids_count: number;
+  score: number | null;
+};
+
+export type RealtorAccountRow = {
+  id: string;
+  name: string;
+  tag: string;
+  phone: string;
+  email: string;
+  created_at: string;
+};
+
+export type ModerationLogRow = {
+  id: string;
+  community_id: string;
+  board_profile_id: string | null;
+  entity_type: 'club_post' | 'event' | 'community_spot' | 'ask';
+  summary: string;
+  created_at: string;
+};
+
 type Rows<R> = TableDef<R, Partial<R>, Partial<R>>;
 
 export type Database = {
@@ -196,6 +268,12 @@ export type Database = {
       announcements: Rows<AnnouncementRow>;
       board_messages: Rows<BoardMessageRow>;
       waves: Rows<WaveRow>;
+      realtors: Rows<RealtorRow>;
+      home_leads: Rows<HomeLeadRow>;
+      club_event_rsvps: Rows<ClubEventRsvpRow>;
+      community_spots: Rows<CommunitySpotRow>;
+      realtor_accounts: Rows<RealtorAccountRow>;
+      moderation_log: Rows<ModerationLogRow>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -222,6 +300,19 @@ export type Database = {
         Returns: { house_id: string; address: string; latitude: number; longitude: number }[];
       };
       current_community_id: { Args: Record<string, never>; Returns: string };
+      current_community_details: { Args: Record<string, never>; Returns: { id: string; name: string; signup_key: string }[] };
+      community_insights: { Args: Record<string, never>; Returns: CommunityInsightsRow[] };
+      community_insights_for: { Args: { p_community_id: string }; Returns: CommunityInsightsRow[] };
+      community_scores: { Args: Record<string, never>; Returns: CommunityScoreRow[] };
+      validate_realtor_signup_key: { Args: { key: string }; Returns: boolean };
+      complete_realtor_signup: {
+        Args: { p_signup_key: string; p_name: string; p_tag: string; p_phone: string; p_email: string };
+        Returns: void;
+      };
+      moderate_delete_club_post: { Args: { p_post_id: string }; Returns: void };
+      moderate_delete_event: { Args: { p_event_id: string }; Returns: void };
+      moderate_delete_spot: { Args: { p_spot_id: string }; Returns: void };
+      moderate_delete_ask: { Args: { p_ask_id: string }; Returns: void };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

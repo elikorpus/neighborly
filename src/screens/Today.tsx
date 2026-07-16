@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Avatar } from '../components/Avatar';
 import { Card } from '../components/Card';
 import { PopIn } from '../components/PopIn';
-import { EMPTY_STATES } from '../data/emptyStates';
+import { buildEmptyStates } from '../data/emptyStates';
 import { useAppNavigation } from '../navigation/useAppNavigation';
 import { useAppState } from '../state/AppStateContext';
 import { theme } from '../theme';
@@ -12,14 +12,20 @@ import { EmptyTab } from './empty';
 
 export function TodayScreen() {
   const navigation = useAppNavigation();
-  const { profile, events, eventRsvps, toggleEventRsvp, directory, wavedIds, sendWave, notifications } = useAppState();
+  const { profile, events, eventRsvps, toggleEventRsvp, directory, wavedIds, sendWave, notifications, communityName } = useAppState();
 
   const upcoming = events.slice(0, 3);
   const newNeighbor = directory.find((p) => !wavedIds.includes(p.id));
   const recentNotifications = notifications.slice(0, 2);
 
   if (upcoming.length === 0 && !newNeighbor && recentNotifications.length === 0) {
-    return <EmptyTab config={EMPTY_STATES.today} />;
+    return (
+      <EmptyTab
+        config={buildEmptyStates(communityName).today}
+        communityName={communityName}
+        onCta={() => navigation.navigate('Tabs', { screen: 'Ask' })}
+      />
+    );
   }
 
   return (

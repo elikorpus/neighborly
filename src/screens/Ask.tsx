@@ -1,12 +1,12 @@
-import { MessageCircle, Plus, Scale } from 'lucide-react-native';
+import { MessageCircle, Plus, Scale, Trash2 } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Avatar } from '../components/Avatar';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Chip } from '../components/Chip';
 import { PillTag } from '../components/PillTag';
-import { EMPTY_STATES } from '../data/emptyStates';
+import { buildEmptyStates } from '../data/emptyStates';
 import { useAppNavigation } from '../navigation/useAppNavigation';
 import { EmptyTab } from './empty';
 import { useAppState } from '../state/AppStateContext';
@@ -17,12 +17,23 @@ type TabName = (typeof TABS)[number];
 
 export function AskScreen() {
   const navigation = useAppNavigation();
-  const { asks, addAsk, fines, votes, vote, pros } = useAppState();
+  const { asks, addAsk, fines, votes, vote, pros, communityName, isBoardMember, deleteAsk } = useAppState();
   const [tab, setTab] = useState<TabName>('Open asks');
   const [composing, setComposing] = useState(false);
   const [draft, setDraft] = useState('');
+  const [showEmpty, setShowEmpty] = useState(true);
 
-  if (asks.length === 0 && fines.length === 0 && pros.length === 0) return <EmptyTab config={EMPTY_STATES.ask} />;
+  if (asks.length === 0 && fines.length === 0 && pros.length === 0 && showEmpty)
+    return (
+      <EmptyTab
+        config={buildEmptyStates(communityName).ask}
+        communityName={communityName}
+        onCta={() => {
+          setShowEmpty(false);
+          setComposing(true);
+        }}
+      />
+    );
 
   const submit = () => {
     if (!draft.trim()) return;
@@ -66,7 +77,7 @@ export function AskScreen() {
               <View style={styles.rowGap}>
                 <View style={{ flex: 1 }}>
                   <Button variant="dark" size="md" onPress={submit}>
-                    Post to Cypress Bend
+                    Post to {communityName || 'your neighborhood'}
                   </Button>
                 </View>
                 <Button variant="outline" size="md" block={false} onPress={() => setComposing(false)} style={{ paddingHorizontal: 16 }}>
@@ -90,6 +101,20 @@ export function AskScreen() {
                     <Text style={styles.askMeta}>{p.messages.length} messages · Open chat</Text>
                   </View>
                 </View>
+                {isBoardMember && (
+                  <Pressable
+                    hitSlop={8}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      Alert.alert('Delete this ask?', 'This removes it and its chat for everyone.', [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Delete', style: 'destructive', onPress: () => deleteAsk(p.id) },
+                      ]);
+                    }}
+                  >
+                    <Trash2 size={16} color={theme.colors.inkSoft} />
+                  </Pressable>
+                )}
               </View>
             </Card>
           ))}

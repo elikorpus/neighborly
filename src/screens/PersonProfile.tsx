@@ -36,7 +36,10 @@ export function PersonProfileScreen({ route, navigation }: Props) {
         <View style={styles.hero}>
           <Avatar initials={p.initials} bg={p.bg} size={72} tilt={-4} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.name}>{p.name}</Text>
+            <View style={styles.nameRow}>
+              <Text style={styles.name}>{p.name}</Text>
+              {p.isBoardMember && <PillTag tone="marigold">🏛 HOA Board</PillTag>}
+            </View>
             <Text style={styles.meta}>
               {p.street} · here {p.tenure.toLowerCase()}
             </Text>
@@ -148,6 +151,7 @@ export function PersonProfileScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.paper },
   hero: { backgroundColor: '#F1EBDD', borderBottomWidth: theme.border.strong, borderBottomColor: theme.colors.ink, padding: 20, paddingTop: 24, flexDirection: 'row', alignItems: 'center', gap: 16 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   name: { fontFamily: theme.font.displayBold, fontSize: 23, color: theme.colors.ink },
   meta: { fontSize: 13, color: theme.colors.inkSoft, fontFamily: theme.font.bodySemibold, marginTop: 2 },
   job: { fontSize: 12.5, color: theme.colors.ink, fontFamily: theme.font.bodySemibold },

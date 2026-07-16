@@ -1,64 +1,60 @@
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Map, Marker } from '@vis.gl/react-maplibre';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import React, { useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { useAppState } from '../state/AppStateContext';
 import { theme } from '../theme';
+import { computeHouseBounds, MAP_STYLE_URL } from './mapBounds';
 
 export type HoodMapProps = {
   highlightHouse: string | null;
   onHousePress: (id: string) => void;
 };
 
-/**
- * Web fallback — react-native-maps has no web support (it relies on native-only
- * codegen components), so the web build shows a plain address list instead of
- * crashing. The real interactive map only renders on iOS/Android (HoodMap.tsx).
- */
+const pinStyle = (background: string, scale: number): React.CSSProperties => ({
+  width: 18,
+  height: 18,
+  borderRadius: 6,
+  border: `2px solid ${theme.colors.ink}`,
+  backgroundColor: background,
+  transform: `scale(${scale})`,
+  cursor: 'pointer',
+});
+
+/** Same MapLibre engine and OpenFreeMap style as the native map (HoodMap.tsx), just rendered through
+ * the web (react-dom) MapLibre bindings instead of the native ones — same look, same behavior. */
 export function HoodMap({ highlightHouse, onHousePress }: HoodMapProps) {
   const { houses } = useAppState();
 
-  if (houses.length === 0) {
+  const bounds = useMemo(() => computeHouseBounds(houses), [houses]);
+
+  if (!bounds) {
     return <View style={styles.empty} />;
   }
 
   return (
-    <View style={styles.wrap}>
-      {houses.map((h) => {
-        const isHi = h.id === highlightHouse;
-        return (
-          <Pressable
-            key={h.id}
-            onPress={() => onHousePress(h.id)}
-            style={[styles.row, isHi && styles.rowHi, h.you && styles.rowYou]}
-          >
-            <Text style={[styles.address, (isHi || h.you) && styles.addressActive]}>{h.address}</Text>
-            {h.you && <Text style={styles.youTag}>You</Text>}
-          </Pressable>
-        );
-      })}
-      <Text style={styles.note}>The interactive map is available in the Neighborly mobile app.</Text>
+    <View style={styles.map}>
+      <Map
+        mapStyle={MAP_STYLE_URL}
+        initialViewState={{ bounds, fitBoundsOptions: { padding: 24 } }}
+        style={{ width: '100%', height: '100%' }}
+        attributionControl={{ compact: true }}
+      >
+        {houses.map((h) => {
+          const isHi = h.id === highlightHouse;
+          const background = isHi ? theme.colors.marigold : h.you ? theme.colors.grass : theme.colors.card;
+          return (
+            <Marker key={h.id} longitude={h.longitude} latitude={h.latitude} onClick={() => onHousePress(h.id)}>
+              <div style={pinStyle(background, isHi ? 1.25 : 1)} />
+            </Marker>
+          );
+        })}
+      </Map>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  map: { width: '100%', aspectRatio: 100 / 130 },
   empty: { width: '100%', aspectRatio: 100 / 130, backgroundColor: '#EFE9DB' },
-  wrap: { padding: 12, backgroundColor: '#EFE9DB' },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: theme.colors.card,
-    borderWidth: theme.border.width,
-    borderColor: theme.colors.line,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    marginBottom: 8,
-  },
-  rowHi: { borderColor: theme.colors.marigold, borderWidth: 2 },
-  rowYou: { backgroundColor: theme.colors.grassPale, borderColor: theme.colors.grass },
-  address: { fontSize: 14, fontFamily: theme.font.bodySemibold, color: theme.colors.ink },
-  addressActive: { fontFamily: theme.font.bodyBold },
-  youTag: { fontSize: 11, fontFamily: theme.font.bodyBold, color: theme.colors.grassDeep, textTransform: 'uppercase' },
-  note: { fontSize: 11.5, color: theme.colors.inkSoft, fontFamily: theme.font.bodySemibold, textAlign: 'center', marginTop: 4 },
 });

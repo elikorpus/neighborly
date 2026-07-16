@@ -1,7 +1,7 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Calendar, Check, MapPin } from 'lucide-react-native';
+import { Calendar, Check, MapPin, Send, Trash2 } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Avatar } from '../components/Avatar';
 import { BackBar } from '../components/BackBar';
 import { Card } from '../components/Card';
@@ -14,10 +14,11 @@ type Props = NativeStackScreenProps<AppStackParamList, 'ClubProfile'>;
 
 export function ClubProfileScreen({ route, navigation }: Props) {
   const { clubId } = route.params;
-  const { clubs, joinedClubIds, toggleClubJoined } = useAppState();
+  const { clubs, joinedClubIds, toggleClubJoined, clubEventRsvps, toggleClubEventRsvp, addClubPost, isBoardMember, deleteClubPost } = useAppState();
   const club = clubs.find((c) => c.id === clubId);
   const joined = club ? joinedClubIds.includes(club.id) : false;
-  const [rsvp, setRsvp] = useState(false);
+  const rsvp = club ? !!clubEventRsvps[club.id] : false;
+  const [postDraft, setPostDraft] = useState('');
 
   if (!club) {
     return (
@@ -80,11 +81,11 @@ export function ClubProfileScreen({ route, navigation }: Props) {
               <Text style={styles.nextMeta}>{club.next.where}</Text>
             </View>
             <Pressable
-              onPress={() => setRsvp(!rsvp)}
+              onPress={() => toggleClubEventRsvp(club.id)}
               style={[styles.rsvpBtn, { backgroundColor: rsvp ? club.accentDeep : theme.colors.paper, borderColor: rsvp ? club.accentDeep : theme.colors.line }]}
             >
               <Text style={[styles.rsvpText, { color: rsvp ? '#fff' : theme.colors.ink }]}>
-                {rsvp ? `✓ You're in — ${club.next.going + 1} going` : `RSVP · ${club.next.going} going`}
+                {rsvp ? `✓ You're in — ${club.next.going} going` : `RSVP · ${club.next.going} going`}
               </Text>
             </Pressable>
           </Card>
@@ -124,14 +125,49 @@ export function ClubProfileScreen({ route, navigation }: Props) {
           </Card>
 
           <SectionLabel>Recent activity</SectionLabel>
-          {club.posts.map((p, k) => (
-            <Card key={k} style={{ marginBottom: 12 }}>
+          {joined && (
+            <Card style={{ marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <TextInput
+                value={postDraft}
+                onChangeText={setPostDraft}
+                placeholder={`Share something with ${club.name}…`}
+                placeholderTextColor={theme.colors.inkSoft}
+                style={styles.postInput}
+              />
+              <Pressable
+                onPress={async () => {
+                  const text = postDraft.trim();
+                  if (!text) return;
+                  setPostDraft('');
+                  await addClubPost(club.id, text);
+                }}
+                style={styles.postSendBtn}
+              >
+                <Send size={16} color="#fff" />
+              </Pressable>
+            </Card>
+          )}
+          {club.posts.map((p) => (
+            <Card key={p.id} style={{ marginBottom: 12 }}>
               <View style={styles.rowCenter}>
                 <Avatar initials={p.initials} bg={p.bg} size={36} tilt={3} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.postWho}>{p.who}</Text>
                   <Text style={styles.postText}>{p.text}</Text>
                 </View>
+                {isBoardMember && (
+                  <Pressable
+                    hitSlop={8}
+                    onPress={() =>
+                      Alert.alert('Delete post?', 'This removes it for everyone in the club.', [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Delete', style: 'destructive', onPress: () => deleteClubPost(p.id) },
+                      ])
+                    }
+                  >
+                    <Trash2 size={16} color={theme.colors.inkSoft} />
+                  </Pressable>
+                )}
               </View>
             </Card>
           ))}
@@ -171,4 +207,17 @@ const styles = StyleSheet.create({
   ruleText: { fontSize: 13, fontFamily: theme.font.bodySemibold, color: theme.colors.ink, flex: 1 },
   postWho: { fontSize: 13, fontFamily: theme.font.bodyBold, color: theme.colors.ink },
   postText: { fontSize: 13.5, color: theme.colors.ink, marginTop: 2, fontFamily: theme.font.bodyRegular },
+  postInput: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: theme.border.width,
+    borderColor: theme.colors.line,
+    borderRadius: theme.radius.pill,
+    fontSize: 13.5,
+    color: theme.colors.ink,
+    backgroundColor: theme.colors.paper,
+    fontFamily: theme.font.bodyRegular,
+  },
+  postSendBtn: { backgroundColor: theme.colors.grass, borderRadius: 999, width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
 });

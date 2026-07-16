@@ -5,6 +5,7 @@ import { useAppState } from '../state/AppStateContext';
 import { theme } from '../theme';
 import { AppStack } from './AppStack';
 import { AuthStack } from './AuthStack';
+import { RealtorStack } from './RealtorStack';
 
 function LoadingScreen() {
   return (
@@ -15,13 +16,14 @@ function LoadingScreen() {
 }
 
 export function RootNavigator() {
-  const { session, sessionLoading, dataLoading, hasProfile } = useAppState();
+  const { session, sessionLoading, dataLoading, hasProfile, isRealtorAccount } = useAppState();
   const showApp = !!session && hasProfile;
-  const loading = sessionLoading || (!!session && !hasProfile && dataLoading);
+  const showRealtor = !!session && !hasProfile && isRealtorAccount;
+  const loading = sessionLoading || (!!session && !hasProfile && !isRealtorAccount && dataLoading);
 
   return (
     <NavigationContainer>
-      {loading ? <LoadingScreen /> : showApp ? <AppStack /> : <AuthStack />}
+      {loading ? <LoadingScreen /> : showApp ? <AppStack /> : showRealtor ? <RealtorStack /> : <AuthStack />}
     </NavigationContainer>
   );
 }

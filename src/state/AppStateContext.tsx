@@ -1,14 +1,37 @@
 import { Session } from '@supabase/supabase-js';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ProfileData } from '../data/constants';
-import { Announcement, Ask, Club, EventItem, FamilyMember, Fine, House, MatchNeighbor, NotificationItem, Person, Pro } from '../data/types';
+import {
+  Announcement,
+  Ask,
+  Club,
+  CommunityBreakdown,
+  EventItem,
+  FamilyMember,
+  Fine,
+  House,
+  MatchNeighbor,
+  ModerationLogEntry,
+  Neighborhood,
+  NeighborhoodTrend,
+  NotificationItem,
+  Person,
+  Pro,
+  Realtor,
+  RealtorProfile,
+  Spot,
+} from '../data/types';
 import {
   AskMessageRow,
   AskRow,
   BoardMessageRow,
+  ClubEventRsvpRow,
   ClubMemberRow,
   ClubPostRow,
   ClubRow,
+  CommunityInsightsRow,
+  CommunityScoreRow,
+  CommunitySpotRow,
   EventRow,
   EventRsvpRow,
   FamilyMemberRow,
@@ -16,9 +39,12 @@ import {
   FineVoteRow,
   HouseRow,
   AnnouncementRow,
+  ModerationLogRow,
   NotificationRow,
   ProRow,
   ProfileRow,
+  RealtorAccountRow,
+  RealtorRow,
   WaveRow,
 } from '../lib/database.types';
 import { supabase } from '../lib/supabase';
@@ -83,6 +109,7 @@ type AppState = {
   sessionLoading: boolean;
   dataLoading: boolean;
   hasProfile: boolean;
+  isBoardMember: boolean;
   logout: () => void;
   completeSignup: (args: {
     email: string;
@@ -100,6 +127,13 @@ type AppState = {
   }) => Promise<void>;
   listOpenHouses: (signupKey: string) => Promise<House[]>;
 
+  // realtor accounts (a distinct account type from residents) — reuse
+  // `neighborhoods` below for the "every community + score" list.
+  isRealtorAccount: boolean;
+  realtorProfile: RealtorProfile | null;
+  realtorSignup: (args: { email: string; password: string; signupKey: string; name: string; tag: string; phone: string }) => Promise<void>;
+  fetchCommunityInsights: (communityId: string) => Promise<CommunityBreakdown | null>;
+
   // profile
   profile: Profile;
   setProfile: (p: Profile) => void;
@@ -107,16 +141,27 @@ type AppState = {
   removeFamilyMember: (index: number) => void;
 
   // community data
+  communityName: string;
+  signupKey: string;
   directory: Person[];
   houses: House[];
   matches: MatchNeighbor[];
   clubs: Club[];
   events: EventItem[];
+  addEvent: (args: { emoji: string; title: string; eventDate: string; eventTime: string; where: string; description: string }) => Promise<void>;
   asks: Ask[];
   fines: Fine[];
   pros: Pro[];
+  realtors: Realtor[];
+  spots: Spot[];
+  addSpot: (args: { emoji: string; name: string; detail: string }) => Promise<void>;
+  submitHomeLead: (kind: 'list' | 'valuation' | 'realtor_contact', realtorId?: string) => Promise<void>;
+  neighborhoodScore: number | null;
+  neighborhoodTrends: NeighborhoodTrend[];
+  neighborhoods: Neighborhood[];
   notifications: NotificationItem[];
   announcements: Announcement[];
+  addAnnouncement: (title: string, body: string) => Promise<void>;
   boardMessages: { from: 'you' | 'them'; text: string }[];
   sendBoardMessage: (text: string) => void;
 
@@ -143,6 +188,16 @@ type AppState = {
   // club membership
   joinedClubIds: string[];
   toggleClubJoined: (clubId: string) => void;
+  addClubPost: (clubId: string, text: string) => Promise<void>;
+  clubEventRsvps: Record<string, boolean>;
+  toggleClubEventRsvp: (clubId: string) => void;
+
+  // HOA board moderation
+  moderationLog: ModerationLogEntry[];
+  deleteClubPost: (postId: string) => Promise<void>;
+  deleteEvent: (eventId: string) => Promise<void>;
+  deleteSpot: (spotId: string) => Promise<void>;
+  deleteAsk: (askId: string) => Promise<void>;
 };
 
 const AppStateContext = createContext<AppState | null>(null);
@@ -171,6 +226,14 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const [announcementRows, setAnnouncementRows] = useState<AnnouncementRow[]>([]);
   const [boardMessageRows, setBoardMessageRows] = useState<BoardMessageRow[]>([]);
   const [waveRows, setWaveRows] = useState<WaveRow[]>([]);
+  const [realtorRows, setRealtorRows] = useState<RealtorRow[]>([]);
+  const [clubEventRsvpRows, setClubEventRsvpRows] = useState<ClubEventRsvpRow[]>([]);
+  const [spotRows, setSpotRows] = useState<CommunitySpotRow[]>([]);
+  const [communityDetails, setCommunityDetails] = useState<{ id: string; name: string; signup_key: string } | null>(null);
+  const [insightsRow, setInsightsRow] = useState<CommunityInsightsRow | null>(null);
+  const [scoreRows, setScoreRows] = useState<CommunityScoreRow[]>([]);
+  const [realtorRow, setRealtorRow] = useState<RealtorAccountRow | null>(null);
+  const [moderationLogRows, setModerationLogRows] = useState<ModerationLogRow[]>([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -193,9 +256,17 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     const { data: mine } = await supabase.from('profiles').select('*').eq('id', uid).maybeSingle();
     setMyRow((mine as ProfileRow | null) ?? null);
     if (!mine) {
+      // Not a resident — check whether this is a realtor account instead.
+      const { data: realtor } = await supabase.from('realtor_accounts').select('*').eq('id', uid).maybeSingle();
+      setRealtorRow((realtor as RealtorAccountRow | null) ?? null);
+      if (realtor) {
+        const { data: scores } = await supabase.rpc('community_scores');
+        setScoreRows((scores ?? []) as CommunityScoreRow[]);
+      }
       setDataLoading(false);
       return;
     }
+    setRealtorRow(null);
 
     const [
       familyRes,
@@ -215,6 +286,13 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       announcementRes,
       boardMessageRes,
       waveRes,
+      realtorRes,
+      clubEventRsvpRes,
+      spotRes,
+      communityDetailsRes,
+      insightsRes,
+      scoreRes,
+      moderationLogRes,
     ] = await Promise.all([
       supabase.from('family_members').select('*'),
       supabase.from('profiles').select('*').neq('id', uid),
@@ -233,6 +311,13 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       supabase.from('announcements').select('*').order('created_at', { ascending: false }),
       supabase.from('board_messages').select('*').order('created_at', { ascending: true }),
       supabase.from('waves').select('*'),
+      supabase.from('realtors').select('*'),
+      supabase.from('club_event_rsvps').select('*'),
+      supabase.from('community_spots').select('*').order('created_at', { ascending: false }),
+      supabase.rpc('current_community_details'),
+      supabase.rpc('community_insights'),
+      supabase.rpc('community_scores'),
+      supabase.from('moderation_log').select('*').order('created_at', { ascending: false }),
     ]);
 
     const allFamily = (familyRes.data ?? []) as FamilyMemberRow[];
@@ -260,6 +345,15 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     setAnnouncementRows((announcementRes.data ?? []) as AnnouncementRow[]);
     setBoardMessageRows((boardMessageRes.data ?? []) as BoardMessageRow[]);
     setWaveRows((waveRes.data ?? []) as WaveRow[]);
+    setRealtorRows((realtorRes.data ?? []) as RealtorRow[]);
+    setClubEventRsvpRows((clubEventRsvpRes.data ?? []) as ClubEventRsvpRow[]);
+    setSpotRows((spotRes.data ?? []) as CommunitySpotRow[]);
+    const details = (communityDetailsRes.data as { id: string; name: string; signup_key: string }[] | null) ?? [];
+    setCommunityDetails(details[0] ?? null);
+    const insights = (insightsRes.data as CommunityInsightsRow[] | null) ?? [];
+    setInsightsRow(insights[0] ?? null);
+    setScoreRows((scoreRes.data ?? []) as CommunityScoreRow[]);
+    setModerationLogRows((moderationLogRes.data ?? []) as ModerationLogRow[]);
     setDataLoading(false);
   }, []);
 
@@ -286,6 +380,14 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       setAnnouncementRows([]);
       setBoardMessageRows([]);
       setWaveRows([]);
+      setRealtorRows([]);
+      setClubEventRsvpRows([]);
+      setSpotRows([]);
+      setCommunityDetails(null);
+      setInsightsRow(null);
+      setScoreRows([]);
+      setRealtorRow(null);
+      setModerationLogRows([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
@@ -349,6 +451,26 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const realtorSignup = useCallback(
+    async (args: { email: string; password: string; signupKey: string; name: string; tag: string; phone: string }) => {
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email: args.email, password: args.password });
+      if (signUpError) throw signUpError;
+      if (!signUpData.session) {
+        throw new Error('Check your email to confirm your account, then sign in.');
+      }
+      const { error: rpcError } = await supabase.rpc('complete_realtor_signup', {
+        p_signup_key: args.signupKey,
+        p_name: args.name,
+        p_tag: args.tag,
+        p_phone: args.phone,
+        p_email: args.email,
+      });
+      if (rpcError) throw rpcError;
+      await refreshAll();
+    },
+    [refreshAll]
+  );
+
   const profilesById = useMemo(() => {
     const map = new Map<string, ProfileRow>();
     if (myRow) map.set(myRow.id, myRow);
@@ -388,6 +510,102 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     [clubMemberRows, myRow]
   );
 
+  const communityName = communityDetails?.name ?? '';
+  const signupKey = communityDetails?.signup_key ?? '';
+
+  const realtors: Realtor[] = useMemo(
+    () => realtorRows.map((r) => ({ id: r.id, name: r.name, tag: r.tag, dealsNote: r.deals_note, phone: r.phone, email: r.email })),
+    [realtorRows]
+  );
+
+  const spots: Spot[] = useMemo(
+    () => spotRows.map((s) => ({ id: s.id, emoji: s.emoji, name: s.name, detail: s.detail })),
+    [spotRows]
+  );
+
+  const neighborhoodScore: number | null = insightsRow?.score ?? null;
+
+  const neighborhoodTrends: NeighborhoodTrend[] = useMemo(() => {
+    if (!insightsRow) return [];
+    const responseNote =
+      insightsRow.avg_response_minutes == null
+        ? { value: 'No data yet', note: 'Be the first to answer a neighbor’s ask' }
+        : insightsRow.avg_response_minutes < 60
+          ? { value: `${Math.round(insightsRow.avg_response_minutes)} min average`, note: 'Average time neighbors take to reply to an ask' }
+          : { value: `${(insightsRow.avg_response_minutes / 60).toFixed(1)} hr average`, note: 'Average time neighbors take to reply to an ask' };
+    const welcomeNote =
+      insightsRow.welcome_rate == null
+        ? { value: 'No new neighbors yet', note: 'Wave at the next person who joins' }
+        : { value: `${Math.round(insightsRow.welcome_rate * 100)}%`, note: 'of neighbors who joined in the last 30 days got a wave' };
+    return [
+      {
+        label: 'Families with kids',
+        value: String(insightsRow.kids_count),
+        note: 'households with kids in your community',
+      },
+      {
+        label: 'Community events per month',
+        value: (insightsRow.events_last_90d / 3).toFixed(1),
+        note: `${insightsRow.events_last_90d} events in the last 90 days`,
+      },
+      { label: 'Help-request response time', value: responseNote.value, note: responseNote.note },
+      { label: 'New-neighbor welcome rate', value: welcomeNote.value, note: welcomeNote.note },
+    ];
+  }, [insightsRow]);
+
+  const neighborhoods: Neighborhood[] = useMemo(
+    () =>
+      scoreRows.map((r) => ({
+        id: r.community_id,
+        name: r.name,
+        score: r.score,
+        you: r.community_id === myRow?.community_id,
+        householdCount: r.household_count,
+        eventsPerMonth: r.events_per_month,
+        kidsCount: r.kids_count,
+      })),
+    [scoreRows, myRow]
+  );
+
+  const isRealtorAccount = !!realtorRow;
+  const realtorProfile: RealtorProfile | null = useMemo(
+    () => (realtorRow ? { name: realtorRow.name, tag: realtorRow.tag, phone: realtorRow.phone, email: realtorRow.email } : null),
+    [realtorRow]
+  );
+
+  const fetchCommunityInsights = useCallback(async (communityId: string): Promise<CommunityBreakdown | null> => {
+    const { data } = await supabase.rpc('community_insights_for', { p_community_id: communityId });
+    const row = ((data as CommunityInsightsRow[] | null) ?? [])[0];
+    if (!row) return null;
+    return {
+      communityId: row.community_id,
+      householdCount: row.household_count,
+      housesTotal: row.houses_total,
+      kidsCount: row.kids_count,
+      eventsLast90d: row.events_last_90d,
+      avgResponseMinutes: row.avg_response_minutes,
+      connectedRate: row.connected_rate,
+      clubParticipationRate: row.club_participation_rate,
+      welcomeRate: row.welcome_rate,
+      score: row.score,
+    };
+  }, []);
+
+  const moderationLog: ModerationLogEntry[] = useMemo(
+    () =>
+      moderationLogRows.map((r) => {
+        const who = r.board_profile_id ? profilesById.get(r.board_profile_id) : undefined;
+        return {
+          id: r.id,
+          entityType: r.entity_type,
+          summary: r.summary,
+          who: who ? `${who.first_name} ${who.last_name}`.trim() : 'A board member',
+          when: timeAgo(r.created_at),
+        };
+      }),
+    [moderationLogRows, profilesById]
+  );
+
   const directory: Person[] = useMemo(() => {
     const myInterests = new Set(myRow?.interests ?? []);
     return directoryRows.map((row) => {
@@ -411,6 +629,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
         shared: row.interests.filter((i) => myInterests.has(i)),
         family,
         clubs: myClubs,
+        isBoardMember: row.is_board_member,
       };
     });
   }, [directoryRows, familyByProfile, clubMemberRows, myRow]);
@@ -462,6 +681,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
         .map((p) => {
           const author = profilesById.get(p.author_profile_id);
           return {
+            id: p.id,
             who: author ? `${author.first_name} ${author.last_name}`.trim() : 'Neighbor',
             initials: author ? initialsFor(author.first_name, author.last_name) : '?',
             bg: colorForId(p.author_profile_id),
@@ -469,6 +689,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
           };
         });
       const lead = row.lead_profile_id ? profilesById.get(row.lead_profile_id) : undefined;
+      const going = clubEventRsvpRows.filter((r) => r.club_id === row.id && r.going).length;
       return {
         id: row.id,
         emoji: row.emoji,
@@ -489,13 +710,19 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
             }
           : { name: '', initials: '?', bg: theme.colors.sky, job: '' },
         about: row.about,
-        next: { title: row.next_title, when: row.next_when, where: row.next_where, going: 0 },
+        next: { title: row.next_title, when: row.next_when, where: row.next_where, going },
         rules: row.rules,
         posts,
         roster: members.slice(0, 4).map((m) => personRoster(m.profile_id)),
       };
     });
-  }, [clubRows, clubMembersByClub, clubPostRows, profilesById, personRoster]);
+  }, [clubRows, clubMembersByClub, clubPostRows, profilesById, personRoster, clubEventRsvpRows]);
+
+  const clubEventRsvps: Record<string, boolean> = useMemo(() => {
+    const out: Record<string, boolean> = {};
+    for (const r of clubEventRsvpRows) if (r.profile_id === myRow?.id) out[r.club_id] = r.going;
+    return out;
+  }, [clubEventRsvpRows, myRow]);
 
   const events: EventItem[] = useMemo(() => {
     return eventRows.map((row) => {
@@ -749,6 +976,147 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     [myRow, joinedClubIds]
   );
 
+  const toggleClubEventRsvp = useCallback(
+    async (clubId: string) => {
+      if (!myRow) return;
+      const next = !(clubEventRsvps[clubId] ?? false);
+      setClubEventRsvpRows((rows) => {
+        const exists = rows.some((r) => r.club_id === clubId && r.profile_id === myRow.id);
+        if (exists) return rows.map((r) => (r.club_id === clubId && r.profile_id === myRow.id ? { ...r, going: next } : r));
+        return [...rows, { club_id: clubId, profile_id: myRow.id, going: next }];
+      });
+      await supabase.from('club_event_rsvps').upsert({ club_id: clubId, profile_id: myRow.id, going: next }, { onConflict: 'club_id,profile_id' });
+    },
+    [myRow, clubEventRsvps]
+  );
+
+  const addClubPost = useCallback(
+    async (clubId: string, text: string) => {
+      if (!myRow) return;
+      const { data } = await supabase
+        .from('club_posts')
+        .insert({ club_id: clubId, author_profile_id: myRow.id, text })
+        .select()
+        .single();
+      if (data) setClubPostRows((rows) => [data as ClubPostRow, ...rows]);
+    },
+    [myRow]
+  );
+
+  const addAnnouncement = useCallback(
+    async (title: string, body: string) => {
+      if (!myRow) return;
+      const { data } = await supabase
+        .from('announcements')
+        .insert({ community_id: myRow.community_id, author_profile_id: myRow.id, title, body })
+        .select()
+        .single();
+      if (data) setAnnouncementRows((rows) => [data as AnnouncementRow, ...rows]);
+    },
+    [myRow]
+  );
+
+  const addEvent = useCallback(
+    async (args: { emoji: string; title: string; eventDate: string; eventTime: string; where: string; description: string }) => {
+      if (!myRow) return;
+      const { data } = await supabase
+        .from('events')
+        .insert({
+          community_id: myRow.community_id,
+          emoji: args.emoji,
+          title: args.title,
+          event_date: args.eventDate,
+          event_time: args.eventTime,
+          where_text: args.where,
+          description: args.description,
+          host_profile_id: myRow.id,
+          host_name: `${myRow.first_name} ${myRow.last_name}`.trim(),
+          accent: theme.colors.grassPale,
+          accent_deep: theme.colors.grassDeep,
+        })
+        .select()
+        .single();
+      if (data) setEventRows((rows) => [...rows, data as EventRow]);
+    },
+    [myRow]
+  );
+
+  const addSpot = useCallback(
+    async (args: { emoji: string; name: string; detail: string }) => {
+      if (!myRow) return;
+      const { data } = await supabase
+        .from('community_spots')
+        .insert({ community_id: myRow.community_id, added_by_profile_id: myRow.id, emoji: args.emoji, name: args.name, detail: args.detail })
+        .select()
+        .single();
+      if (data) setSpotRows((rows) => [data as CommunitySpotRow, ...rows]);
+    },
+    [myRow]
+  );
+
+  const submitHomeLead = useCallback(
+    async (kind: 'list' | 'valuation' | 'realtor_contact', realtorId?: string) => {
+      if (!myRow) return;
+      await supabase.from('home_leads').insert({ community_id: myRow.community_id, profile_id: myRow.id, kind, realtor_id: realtorId ?? null });
+    },
+    [myRow]
+  );
+
+  const logModeration = useCallback(
+    (entityType: ModerationLogRow['entity_type'], summary: string) => {
+      if (!myRow) return;
+      setModerationLogRows((rows) => [
+        { id: `local-${Date.now()}`, community_id: myRow.community_id, board_profile_id: myRow.id, entity_type: entityType, summary, created_at: new Date().toISOString() },
+        ...rows,
+      ]);
+    },
+    [myRow]
+  );
+
+  const deleteClubPost = useCallback(
+    async (postId: string) => {
+      const post = clubPostRows.find((p) => p.id === postId);
+      const { error } = await supabase.rpc('moderate_delete_club_post', { p_post_id: postId });
+      if (error) return;
+      setClubPostRows((rows) => rows.filter((p) => p.id !== postId));
+      if (post) logModeration('club_post', post.text);
+    },
+    [clubPostRows, logModeration]
+  );
+
+  const deleteEvent = useCallback(
+    async (eventId: string) => {
+      const event = eventRows.find((e) => e.id === eventId);
+      const { error } = await supabase.rpc('moderate_delete_event', { p_event_id: eventId });
+      if (error) return;
+      setEventRows((rows) => rows.filter((e) => e.id !== eventId));
+      if (event) logModeration('event', event.title);
+    },
+    [eventRows, logModeration]
+  );
+
+  const deleteSpot = useCallback(
+    async (spotId: string) => {
+      const spot = spotRows.find((s) => s.id === spotId);
+      const { error } = await supabase.rpc('moderate_delete_spot', { p_spot_id: spotId });
+      if (error) return;
+      setSpotRows((rows) => rows.filter((s) => s.id !== spotId));
+      if (spot) logModeration('community_spot', spot.name);
+    },
+    [spotRows, logModeration]
+  );
+
+  const deleteAsk = useCallback(
+    async (askId: string) => {
+      const ask = askRows.find((a) => a.id === askId);
+      const { error } = await supabase.rpc('moderate_delete_ask', { p_ask_id: askId });
+      if (error) return;
+      setAskRows((rows) => rows.filter((a) => a.id !== askId));
+      if (ask) logModeration('ask', ask.text);
+    },
+    [askRows, logModeration]
+  );
+
   const sendBoardMessage = useCallback(
     async (text: string) => {
       if (!myRow) return;
@@ -760,6 +1128,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
         .select()
         .single();
       if (data) setBoardMessageRows((rows) => [...rows, data as BoardMessageRow]);
+      const hoaName = communityName ? `${communityName} HOA` : 'the HOA';
       setTimeout(async () => {
         const { data: reply } = await supabase
           .from('board_messages')
@@ -767,14 +1136,14 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
             community_id: communityId,
             profile_id: myId,
             from_board: true,
-            text: "Got it — added to the board's queue. We typically reply within 2 business days. — Cypress Bend HOA",
+            text: `Got it — added to the board's queue. We typically reply within 2 business days. — ${hoaName}`,
           })
           .select()
           .single();
         if (reply) setBoardMessageRows((rows) => [...rows, reply as BoardMessageRow]);
       }, 700);
     },
-    [myRow]
+    [myRow, communityName]
   );
 
   const value = useMemo<AppState>(
@@ -783,23 +1152,39 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       sessionLoading,
       dataLoading,
       hasProfile: !!myRow,
+      isBoardMember: myRow?.is_board_member ?? false,
       logout,
       completeSignup,
       listOpenHouses,
+      isRealtorAccount,
+      realtorProfile,
+      realtorSignup,
+      fetchCommunityInsights,
       profile,
       setProfile,
       addFamilyMember,
       removeFamilyMember,
+      communityName,
+      signupKey,
       directory,
       houses,
       matches,
       clubs,
       events,
+      addEvent,
       asks,
       fines,
       pros,
+      realtors,
+      spots,
+      addSpot,
+      submitHomeLead,
+      neighborhoodScore,
+      neighborhoodTrends,
+      neighborhoods,
       notifications,
       announcements,
+      addAnnouncement,
       boardMessages,
       sendBoardMessage,
       readNotificationIds,
@@ -816,6 +1201,14 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       sendWave,
       joinedClubIds,
       toggleClubJoined,
+      addClubPost,
+      clubEventRsvps,
+      toggleClubEventRsvp,
+      moderationLog,
+      deleteClubPost,
+      deleteEvent,
+      deleteSpot,
+      deleteAsk,
     }),
     [
       session,
@@ -825,20 +1218,35 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       logout,
       completeSignup,
       listOpenHouses,
+      isRealtorAccount,
+      realtorProfile,
+      realtorSignup,
+      fetchCommunityInsights,
       profile,
       setProfile,
       addFamilyMember,
       removeFamilyMember,
+      communityName,
+      signupKey,
       directory,
       houses,
       matches,
       clubs,
       events,
+      addEvent,
       asks,
       fines,
       pros,
+      realtors,
+      spots,
+      addSpot,
+      submitHomeLead,
+      neighborhoodScore,
+      neighborhoodTrends,
+      neighborhoods,
       notifications,
       announcements,
+      addAnnouncement,
       boardMessages,
       sendBoardMessage,
       readNotificationIds,
@@ -855,6 +1263,14 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       sendWave,
       joinedClubIds,
       toggleClubJoined,
+      addClubPost,
+      clubEventRsvps,
+      toggleClubEventRsvp,
+      moderationLog,
+      deleteClubPost,
+      deleteEvent,
+      deleteSpot,
+      deleteAsk,
     ]
   );
 

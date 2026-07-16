@@ -74,6 +74,9 @@ export function LoginScreen({ navigation }: Props) {
                 New here? <Text style={{ color: theme.colors.grass, fontFamily: theme.font.bodyBold }}>Create an account</Text>
               </Text>
             </Pressable>
+            <Pressable onPress={() => navigation.navigate('RealtorSignup')} style={styles.realtorRow}>
+              <Text style={styles.realtorText}>Realtor? Sign up here</Text>
+            </Pressable>
             <View style={styles.footerRow}>
               <MapPin size={13} color={theme.colors.grass} />
               <Text style={styles.footerText}>Every neighbor is verified before joining</Text>
@@ -120,6 +123,8 @@ const styles = StyleSheet.create({
   error: { color: theme.colors.red, fontSize: 12.5, fontFamily: theme.font.bodySemibold, marginBottom: 8 },
   newHereRow: { alignItems: 'center', marginTop: 14, marginBottom: 8 },
   newHereText: { fontSize: 13, color: theme.colors.inkSoft, fontFamily: theme.font.bodySemibold },
+  realtorRow: { alignItems: 'center', marginBottom: 8 },
+  realtorText: { fontSize: 12.5, color: theme.colors.inkSoft, fontFamily: theme.font.bodySemibold, textDecorationLine: 'underline' },
   footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 2 },
   footerText: { fontSize: 12.5, color: theme.colors.inkSoft, fontFamily: theme.font.bodySemibold },
 });
