@@ -78,13 +78,10 @@ export function Button({
       ) : (
         <View style={styles.content}>
           {leading}
-          {typeof children === 'string' ? (
-            <Text style={{ fontFamily: theme.font.bodyBold, fontSize: s.fontSize, color: v.fg }}>
-              {children}
-            </Text>
-          ) : (
-            children
-          )}
+          {/* Always wrapped in Text — JSX like `Post to {name}` compiles to an array of
+              children, not a single string, so a `typeof children === 'string'` check
+              misses it and silently drops the intended text color. */}
+          <Text style={{ fontFamily: theme.font.bodyBold, fontSize: s.fontSize, color: v.fg }}>{children}</Text>
           {trailing}
         </View>
       )}
