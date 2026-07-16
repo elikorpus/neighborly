@@ -119,8 +119,6 @@ export type AskMessageRow = {
   created_at: string;
 };
 
-export type AskHideRow = { ask_id: string; profile_id: string; created_at: string };
-
 export type PollRow = {
   id: string;
   community_id: string;
@@ -175,6 +173,8 @@ export type BoardMessageRow = {
 };
 
 export type WaveRow = { from_profile_id: string; to_profile_id: string; created_at: string };
+
+export type BoardThreadArchiveRow = { resident_profile_id: string; archived_by: string | null; archived_at: string };
 
 export type RealtorRow = {
   id: string;

@@ -24,10 +24,10 @@ import {
   Spot,
 } from '../data/types';
 import {
-  AskHideRow,
   AskMessageRow,
   AskRow,
   BoardMessageRow,
+  BoardThreadArchiveRow,
   ClubEventRsvpRow,
   ClubMemberRow,
   ClubPostRow,
@@ -51,11 +51,17 @@ import {
   RealtorRow,
   WaveRow,
 } from '../lib/database.types';
+import { notify } from '../lib/alert';
 import { supabase } from '../lib/supabase';
 import { theme } from '../theme';
 
 export type Profile = ProfileData;
 type Vote = 'a' | 'b';
+
+/** Optimistic rows get one of these as their id until the real insert resolves. */
+function makeTempId(): string {
+  return `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 const EMPTY_PROFILE: Profile = {
   firstName: '',
@@ -183,6 +189,9 @@ type AppState = {
   addAnnouncement: (title: string, body: string) => Promise<void>;
   boardThreads: BoardThread[];
   sendBoardMessage: (text: string, targetProfileId?: string) => void;
+  archivedThreadIds: string[];
+  archiveThread: (residentId: string) => Promise<void>;
+  unarchiveThread: (residentId: string) => Promise<void>;
 
   // notifications
   readNotificationIds: string[];
@@ -193,9 +202,6 @@ type AppState = {
   // asks + votes
   addAsk: (text: string, kind?: 'Borrow' | 'Favor' | 'Recommend' | 'Ask') => void;
   sendChatMessage: (askId: string, text: string) => void;
-  hiddenAskIds: string[];
-  hideAsk: (askId: string) => Promise<void>;
-  unhideAsk: (askId: string) => Promise<void>;
   votes: Record<string, Vote>;
   vote: (pollId: string, which: Vote) => void;
   addPoll: (args: { title: string; description: string; optionA: string; optionB: string }) => Promise<void>;
@@ -247,7 +253,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const [eventRsvpRows, setEventRsvpRows] = useState<EventRsvpRow[]>([]);
   const [askRows, setAskRows] = useState<AskRow[]>([]);
   const [askMessageRows, setAskMessageRows] = useState<AskMessageRow[]>([]);
-  const [askHideRows, setAskHideRows] = useState<AskHideRow[]>([]);
+  const [boardThreadArchiveRows, setBoardThreadArchiveRows] = useState<BoardThreadArchiveRow[]>([]);
   const [pollRows, setPollRows] = useState<PollRow[]>([]);
   const [pollVoteRows, setPollVoteRows] = useState<PollVoteRow[]>([]);
   const [proRows, setProRows] = useState<ProRow[]>([]);
@@ -309,13 +315,13 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       eventRsvpRes,
       askRes,
       askMessageRes,
-      askHideRes,
       pollRes,
       pollVoteRes,
       proRes,
       notificationRes,
       announcementRes,
       boardMessageRes,
+      boardThreadArchiveRes,
       waveRes,
       realtorRes,
       clubEventRsvpRes,
@@ -336,13 +342,13 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       supabase.from('event_rsvps').select('*'),
       supabase.from('asks').select('*').order('created_at', { ascending: false }),
       supabase.from('ask_messages').select('*').order('created_at', { ascending: true }),
-      supabase.from('ask_hides').select('*').eq('profile_id', uid),
       supabase.from('polls').select('*').order('created_at', { ascending: false }),
       supabase.from('poll_votes').select('*'),
       supabase.from('pros').select('*'),
       supabase.from('notifications').select('*').order('created_at', { ascending: false }),
       supabase.from('announcements').select('*').order('created_at', { ascending: false }),
       supabase.from('board_messages').select('*').order('created_at', { ascending: true }),
+      supabase.from('board_thread_archives').select('*'),
       supabase.from('waves').select('*'),
       supabase.from('realtors').select('*'),
       supabase.from('club_event_rsvps').select('*'),
@@ -372,13 +378,13 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     setEventRsvpRows((eventRsvpRes.data ?? []) as EventRsvpRow[]);
     setAskRows((askRes.data ?? []) as AskRow[]);
     setAskMessageRows((askMessageRes.data ?? []) as AskMessageRow[]);
-    setAskHideRows((askHideRes.data ?? []) as AskHideRow[]);
     setPollRows((pollRes.data ?? []) as PollRow[]);
     setPollVoteRows((pollVoteRes.data ?? []) as PollVoteRow[]);
     setProRows((proRes.data ?? []) as ProRow[]);
     setNotificationRows((notificationRes.data ?? []) as NotificationRow[]);
     setAnnouncementRows((announcementRes.data ?? []) as AnnouncementRow[]);
     setBoardMessageRows((boardMessageRes.data ?? []) as BoardMessageRow[]);
+    setBoardThreadArchiveRows((boardThreadArchiveRes.data ?? []) as BoardThreadArchiveRow[]);
     setWaveRows((waveRes.data ?? []) as WaveRow[]);
     setRealtorRows((realtorRes.data ?? []) as RealtorRow[]);
     setClubEventRsvpRows((clubEventRsvpRes.data ?? []) as ClubEventRsvpRow[]);
@@ -414,13 +420,13 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       setEventRsvpRows([]);
       setAskRows([]);
       setAskMessageRows([]);
-      setAskHideRows([]);
       setPollRows([]);
       setPollVoteRows([]);
       setProRows([]);
       setNotificationRows([]);
       setAnnouncementRows([]);
       setBoardMessageRows([]);
+      setBoardThreadArchiveRows([]);
       setWaveRows([]);
       setRealtorRows([]);
       setClubEventRsvpRows([]);
@@ -833,27 +839,32 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     });
   }, [askRows, askMessageRows, profilesById, myRow]);
 
-  const hiddenAskIds: string[] = useMemo(() => askHideRows.map((r) => r.ask_id), [askHideRows]);
+  const archivedThreadIds: string[] = useMemo(
+    () => boardThreadArchiveRows.map((r) => r.resident_profile_id),
+    [boardThreadArchiveRows]
+  );
 
-  const hideAsk = useCallback(
-    async (askId: string) => {
+  const archiveThread = useCallback(
+    async (residentId: string) => {
       if (!myRow) return;
-      const { error } = await supabase.from('ask_hides').insert({ ask_id: askId, profile_id: myRow.id });
-      if (error) return;
-      setAskHideRows((rows) => [...rows, { ask_id: askId, profile_id: myRow.id, created_at: new Date().toISOString() }]);
+      const { error } = await supabase.from('board_thread_archives').insert({ resident_profile_id: residentId, archived_by: myRow.id });
+      if (error) {
+        notify("Couldn't archive", 'Something went wrong archiving this thread. Try again.');
+        return;
+      }
+      setBoardThreadArchiveRows((rows) => [...rows, { resident_profile_id: residentId, archived_by: myRow.id, archived_at: new Date().toISOString() }]);
     },
     [myRow]
   );
 
-  const unhideAsk = useCallback(
-    async (askId: string) => {
-      if (!myRow) return;
-      const { error } = await supabase.from('ask_hides').delete().eq('ask_id', askId).eq('profile_id', myRow.id);
-      if (error) return;
-      setAskHideRows((rows) => rows.filter((r) => r.ask_id !== askId));
-    },
-    [myRow]
-  );
+  const unarchiveThread = useCallback(async (residentId: string) => {
+    const { error } = await supabase.from('board_thread_archives').delete().eq('resident_profile_id', residentId);
+    if (error) {
+      notify("Couldn't unarchive", 'Something went wrong restoring this thread. Try again.');
+      return;
+    }
+    setBoardThreadArchiveRows((rows) => rows.filter((r) => r.resident_profile_id !== residentId));
+  }, []);
 
   const polls: Poll[] = useMemo(() => {
     return pollRows.map((row) => {
@@ -935,7 +946,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const setProfile = useCallback(
     async (p: Profile) => {
       if (!myRow) return;
-      await supabase
+      const { error: updateError } = await supabase
         .from('profiles')
         .update({
           first_name: p.firstName,
@@ -948,11 +959,25 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
           interests: p.interests,
         })
         .eq('id', myRow.id);
-      await supabase.from('family_members').delete().eq('profile_id', myRow.id);
+      if (updateError) {
+        notify("Couldn't save", 'Something went wrong saving your profile. Try again.');
+        return;
+      }
+      const { error: deleteError } = await supabase.from('family_members').delete().eq('profile_id', myRow.id);
+      if (deleteError) {
+        notify("Couldn't save", 'Something went wrong saving your household. Try again.');
+        await refreshAll();
+        return;
+      }
       if (p.family.length) {
-        await supabase
+        const { error: insertError } = await supabase
           .from('family_members')
           .insert(p.family.map((f) => ({ profile_id: myRow.id, name: f.name, relation: f.relation, age: f.age, pet_type: f.petType ?? null })));
+        if (insertError) {
+          notify("Couldn't save", 'Something went wrong saving your household. Try again.');
+          await refreshAll();
+          return;
+        }
       }
       await refreshAll();
     },
@@ -994,14 +1019,23 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const addAsk = useCallback(
     async (text: string, kind: 'Borrow' | 'Favor' | 'Recommend' | 'Ask' = 'Ask') => {
       if (!myRow) return;
-      const { data } = await supabase
+      const tempId = makeTempId();
+      setAskRows((rows) => [
+        { id: tempId, community_id: myRow.community_id, author_profile_id: myRow.id, kind, text, created_at: new Date().toISOString() },
+        ...rows,
+      ]);
+      const { data, error } = await supabase
         .from('asks')
         .insert({ community_id: myRow.community_id, author_profile_id: myRow.id, kind, text })
         .select()
         .single();
-      if (!data) return;
+      if (error || !data) {
+        setAskRows((rows) => rows.filter((r) => r.id !== tempId));
+        notify("Couldn't post", 'Something went wrong posting your ask. Try again.');
+        return;
+      }
       const askRow = data as AskRow;
-      setAskRows((rows) => [askRow, ...rows]);
+      setAskRows((rows) => rows.map((r) => (r.id === tempId ? askRow : r)));
       const { data: msgData } = await supabase
         .from('ask_messages')
         .insert({ ask_id: askRow.id, sender_profile_id: myRow.id, text })
@@ -1015,12 +1049,22 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const sendChatMessage = useCallback(
     async (askId: string, text: string) => {
       if (!myRow) return;
-      const { data } = await supabase
+      const tempId = makeTempId();
+      setAskMessageRows((rows) => [
+        ...rows,
+        { id: tempId, ask_id: askId, sender_profile_id: myRow.id, text, created_at: new Date().toISOString() },
+      ]);
+      const { data, error } = await supabase
         .from('ask_messages')
         .insert({ ask_id: askId, sender_profile_id: myRow.id, text })
         .select()
         .single();
-      if (data) setAskMessageRows((rows) => [...rows, data as AskMessageRow]);
+      if (error || !data) {
+        setAskMessageRows((rows) => rows.filter((r) => r.id !== tempId));
+        notify("Couldn't send", 'Something went wrong sending your message. Try again.');
+        return;
+      }
+      setAskMessageRows((rows) => rows.map((r) => (r.id === tempId ? (data as AskMessageRow) : r)));
     },
     [myRow]
   );
@@ -1028,12 +1072,16 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const vote = useCallback(
     async (pollId: string, which: Vote) => {
       if (!myRow || votes[pollId]) return;
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('poll_votes')
         .insert({ poll_id: pollId, profile_id: myRow.id, choice: which })
         .select()
         .single();
-      if (data) setPollVoteRows((rows) => [...rows, data as PollVoteRow]);
+      if (error || !data) {
+        notify("Couldn't vote", 'Something went wrong casting your vote. Try again.');
+        return;
+      }
+      setPollVoteRows((rows) => [...rows, data as PollVoteRow]);
     },
     [myRow, votes]
   );
@@ -1041,7 +1089,21 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const addPoll = useCallback(
     async (args: { title: string; description: string; optionA: string; optionB: string }) => {
       if (!myRow) return;
-      const { data } = await supabase
+      const tempId = makeTempId();
+      setPollRows((rows) => [
+        {
+          id: tempId,
+          community_id: myRow.community_id,
+          board_profile_id: myRow.id,
+          title: args.title,
+          description: args.description,
+          option_a: args.optionA,
+          option_b: args.optionB,
+          created_at: new Date().toISOString(),
+        },
+        ...rows,
+      ]);
+      const { data, error } = await supabase
         .from('polls')
         .insert({
           community_id: myRow.community_id,
@@ -1053,7 +1115,12 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
         })
         .select()
         .single();
-      if (data) setPollRows((rows) => [data as PollRow, ...rows]);
+      if (error || !data) {
+        setPollRows((rows) => rows.filter((r) => r.id !== tempId));
+        notify("Couldn't post", 'Something went wrong posting this vote. Try again.');
+        return;
+      }
+      setPollRows((rows) => rows.map((r) => (r.id === tempId ? (data as PollRow) : r)));
     },
     [myRow]
   );
@@ -1112,12 +1179,22 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const addClubPost = useCallback(
     async (clubId: string, text: string) => {
       if (!myRow) return;
-      const { data } = await supabase
+      const tempId = makeTempId();
+      setClubPostRows((rows) => [
+        { id: tempId, club_id: clubId, author_profile_id: myRow.id, text, created_at: new Date().toISOString() },
+        ...rows,
+      ]);
+      const { data, error } = await supabase
         .from('club_posts')
         .insert({ club_id: clubId, author_profile_id: myRow.id, text })
         .select()
         .single();
-      if (data) setClubPostRows((rows) => [data as ClubPostRow, ...rows]);
+      if (error || !data) {
+        setClubPostRows((rows) => rows.filter((r) => r.id !== tempId));
+        notify("Couldn't post", 'Something went wrong sending your post. Try again.');
+        return;
+      }
+      setClubPostRows((rows) => rows.map((r) => (r.id === tempId ? (data as ClubPostRow) : r)));
     },
     [myRow]
   );
@@ -1125,12 +1202,22 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const addAnnouncement = useCallback(
     async (title: string, body: string) => {
       if (!myRow) return;
-      const { data } = await supabase
+      const tempId = makeTempId();
+      setAnnouncementRows((rows) => [
+        { id: tempId, community_id: myRow.community_id, author_profile_id: myRow.id, title, body, created_at: new Date().toISOString() },
+        ...rows,
+      ]);
+      const { data, error } = await supabase
         .from('announcements')
         .insert({ community_id: myRow.community_id, author_profile_id: myRow.id, title, body })
         .select()
         .single();
-      if (data) setAnnouncementRows((rows) => [data as AnnouncementRow, ...rows]);
+      if (error || !data) {
+        setAnnouncementRows((rows) => rows.filter((r) => r.id !== tempId));
+        notify("Couldn't post", 'Something went wrong posting this announcement. Try again.');
+        return;
+      }
+      setAnnouncementRows((rows) => rows.map((r) => (r.id === tempId ? (data as AnnouncementRow) : r)));
     },
     [myRow]
   );
@@ -1138,7 +1225,26 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const addEvent = useCallback(
     async (args: { emoji: string; title: string; eventDate: string; eventTime: string; where: string; description: string }) => {
       if (!myRow) return;
-      const { data } = await supabase
+      const tempId = makeTempId();
+      setEventRows((rows) => [
+        ...rows,
+        {
+          id: tempId,
+          community_id: myRow.community_id,
+          emoji: args.emoji,
+          title: args.title,
+          event_date: args.eventDate,
+          event_time: args.eventTime,
+          where_text: args.where,
+          description: args.description,
+          host_profile_id: myRow.id,
+          host_name: `${myRow.first_name} ${myRow.last_name}`.trim(),
+          accent: theme.colors.grassPale,
+          accent_deep: theme.colors.grassDeep,
+          created_at: new Date().toISOString(),
+        },
+      ]);
+      const { data, error } = await supabase
         .from('events')
         .insert({
           community_id: myRow.community_id,
@@ -1155,7 +1261,12 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
         })
         .select()
         .single();
-      if (data) setEventRows((rows) => [...rows, data as EventRow]);
+      if (error || !data) {
+        setEventRows((rows) => rows.filter((r) => r.id !== tempId));
+        notify("Couldn't create event", 'Something went wrong creating your event. Try again.');
+        return;
+      }
+      setEventRows((rows) => rows.map((r) => (r.id === tempId ? (data as EventRow) : r)));
     },
     [myRow]
   );
@@ -1163,12 +1274,30 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const addSpot = useCallback(
     async (args: { emoji: string; name: string; detail: string }) => {
       if (!myRow) return;
-      const { data } = await supabase
+      const tempId = makeTempId();
+      setSpotRows((rows) => [
+        {
+          id: tempId,
+          community_id: myRow.community_id,
+          added_by_profile_id: myRow.id,
+          emoji: args.emoji,
+          name: args.name,
+          detail: args.detail,
+          created_at: new Date().toISOString(),
+        },
+        ...rows,
+      ]);
+      const { data, error } = await supabase
         .from('community_spots')
         .insert({ community_id: myRow.community_id, added_by_profile_id: myRow.id, emoji: args.emoji, name: args.name, detail: args.detail })
         .select()
         .single();
-      if (data) setSpotRows((rows) => [data as CommunitySpotRow, ...rows]);
+      if (error || !data) {
+        setSpotRows((rows) => rows.filter((r) => r.id !== tempId));
+        notify("Couldn't add spot", 'Something went wrong adding this spot. Try again.');
+        return;
+      }
+      setSpotRows((rows) => rows.map((r) => (r.id === tempId ? (data as CommunitySpotRow) : r)));
     },
     [myRow]
   );
@@ -1196,7 +1325,10 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     async (postId: string) => {
       const post = clubPostRows.find((p) => p.id === postId);
       const { error } = await supabase.rpc('moderate_delete_club_post', { p_post_id: postId });
-      if (error) return;
+      if (error) {
+        notify("Couldn't delete", 'Something went wrong deleting this post. Try again.');
+        return;
+      }
       setClubPostRows((rows) => rows.filter((p) => p.id !== postId));
       if (post) logModeration('club_post', post.text);
     },
@@ -1207,7 +1339,10 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     async (eventId: string) => {
       const event = eventRows.find((e) => e.id === eventId);
       const { error } = await supabase.rpc('moderate_delete_event', { p_event_id: eventId });
-      if (error) return;
+      if (error) {
+        notify("Couldn't delete", 'Something went wrong deleting this event. Try again.');
+        return;
+      }
       setEventRows((rows) => rows.filter((e) => e.id !== eventId));
       if (event) logModeration('event', event.title);
     },
@@ -1218,7 +1353,10 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     async (spotId: string) => {
       const spot = spotRows.find((s) => s.id === spotId);
       const { error } = await supabase.rpc('moderate_delete_spot', { p_spot_id: spotId });
-      if (error) return;
+      if (error) {
+        notify("Couldn't delete", 'Something went wrong deleting this spot. Try again.');
+        return;
+      }
       setSpotRows((rows) => rows.filter((s) => s.id !== spotId));
       if (spot) logModeration('community_spot', spot.name);
     },
@@ -1229,7 +1367,10 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     async (askId: string) => {
       const ask = askRows.find((a) => a.id === askId);
       const { error } = await supabase.rpc('moderate_delete_ask', { p_ask_id: askId });
-      if (error) return;
+      if (error) {
+        notify("Couldn't delete", 'Something went wrong deleting this ask. Try again.');
+        return;
+      }
       setAskRows((rows) => rows.filter((a) => a.id !== askId));
       if (ask) logModeration('ask', ask.text);
     },
@@ -1239,12 +1380,22 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const addPost = useCallback(
     async (text: string) => {
       if (!myRow) return;
-      const { data } = await supabase
+      const tempId = makeTempId();
+      setCommunityPostRows((rows) => [
+        { id: tempId, community_id: myRow.community_id, author_profile_id: myRow.id, text, created_at: new Date().toISOString() },
+        ...rows,
+      ]);
+      const { data, error } = await supabase
         .from('community_posts')
         .insert({ community_id: myRow.community_id, author_profile_id: myRow.id, text })
         .select()
         .single();
-      if (data) setCommunityPostRows((rows) => [data as CommunityPostRow, ...rows]);
+      if (error || !data) {
+        setCommunityPostRows((rows) => rows.filter((r) => r.id !== tempId));
+        notify("Couldn't post", 'Something went wrong sending your post. Try again.');
+        return;
+      }
+      setCommunityPostRows((rows) => rows.map((r) => (r.id === tempId ? (data as CommunityPostRow) : r)));
     },
     [myRow]
   );
@@ -1253,7 +1404,10 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     async (postId: string) => {
       const post = communityPostRows.find((p) => p.id === postId);
       const { error } = await supabase.rpc('moderate_delete_post', { p_post_id: postId });
-      if (error) return;
+      if (error) {
+        notify("Couldn't delete", 'Something went wrong deleting this post. Try again.');
+        return;
+      }
       setCommunityPostRows((rows) => rows.filter((p) => p.id !== postId));
       if (post) logModeration('community_post', post.text);
     },
@@ -1267,12 +1421,22 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       // member replying inside someone else's thread from the inbox.
       const profileId = targetProfileId ?? myRow.id;
       const fromBoard = !!targetProfileId;
-      const { data } = await supabase
+      const tempId = makeTempId();
+      setBoardMessageRows((rows) => [
+        ...rows,
+        { id: tempId, community_id: myRow.community_id, profile_id: profileId, from_board: fromBoard, text, created_at: new Date().toISOString() },
+      ]);
+      const { data, error } = await supabase
         .from('board_messages')
         .insert({ community_id: myRow.community_id, profile_id: profileId, from_board: fromBoard, text })
         .select()
         .single();
-      if (data) setBoardMessageRows((rows) => [...rows, data as BoardMessageRow]);
+      if (error || !data) {
+        setBoardMessageRows((rows) => rows.filter((r) => r.id !== tempId));
+        notify("Couldn't send", 'Something went wrong sending your message. Try again.');
+        return;
+      }
+      setBoardMessageRows((rows) => rows.map((r) => (r.id === tempId ? (data as BoardMessageRow) : r)));
     },
     [myRow]
   );
@@ -1319,15 +1483,15 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       addAnnouncement,
       boardThreads,
       sendBoardMessage,
+      archivedThreadIds,
+      archiveThread,
+      unarchiveThread,
       readNotificationIds,
       markNotificationRead,
       markAllNotificationsRead,
       unreadNotificationCount,
       addAsk,
       sendChatMessage,
-      hiddenAskIds,
-      hideAsk,
-      unhideAsk,
       votes,
       vote,
       addPoll,
@@ -1388,15 +1552,15 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       addAnnouncement,
       boardThreads,
       sendBoardMessage,
+      archivedThreadIds,
+      archiveThread,
+      unarchiveThread,
       readNotificationIds,
       markNotificationRead,
       markAllNotificationsRead,
       unreadNotificationCount,
       addAsk,
       sendChatMessage,
-      hiddenAskIds,
-      hideAsk,
-      unhideAsk,
       votes,
       vote,
       addPoll,

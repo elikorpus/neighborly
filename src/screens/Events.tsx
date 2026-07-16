@@ -34,20 +34,16 @@ export function EventsScreen() {
   const navigation = useAppNavigation();
   const { events, eventRsvps, addEvent, communityName } = useAppState();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("RSVP'd");
-  const [showEmpty, setShowEmpty] = useState(true);
   const [composing, setComposing] = useState(false);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [error, setError] = useState('');
 
-  if (events.length === 0 && showEmpty)
+  if (events.length === 0 && !composing)
     return (
       <EmptyTab
         config={buildEmptyStates(communityName).events}
         communityName={communityName}
-        onCta={() => {
-          setShowEmpty(false);
-          setComposing(true);
-        }}
+        onCta={() => setComposing(true)}
       />
     );
 
@@ -116,7 +112,6 @@ export function EventsScreen() {
                 setComposing(false);
                 setDraft(EMPTY_DRAFT);
                 setError('');
-                setShowEmpty(true);
               }}
               style={{ paddingHorizontal: 16 }}
             >

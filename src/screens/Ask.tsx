@@ -1,4 +1,4 @@
-import { EyeOff, MessageCircle, Plus, RotateCcw, Scale, Trash2 } from 'lucide-react-native';
+import { MessageCircle, Plus, Scale, Trash2 } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Avatar } from '../components/Avatar';
@@ -15,7 +15,7 @@ import { EmptyTab } from './empty';
 import { useAppState } from '../state/AppStateContext';
 import { theme } from '../theme';
 
-const TABS = ['Open asks', 'Trusted pros', 'Vote', 'Hidden'] as const;
+const TABS = ['Open asks', 'Trusted pros', 'Vote'] as const;
 type TabName = (typeof TABS)[number];
 
 const ASK_PLACEHOLDER = 'e.g. Anyone have a folding table for Saturday?';
@@ -23,9 +23,8 @@ const RECOMMEND_PLACEHOLDER = 'e.g. I need an electrician who can come out this 
 
 export function AskScreen() {
   const navigation = useAppNavigation();
-  const { asks, addAsk, polls, votes, vote, addPoll, pros, communityName, isBoardMember, deleteAsk, hiddenAskIds, hideAsk, unhideAsk } = useAppState();
+  const { asks, addAsk, polls, votes, vote, addPoll, pros, communityName, isBoardMember, deleteAsk } = useAppState();
   const [tab, setTab] = useState<TabName>('Open asks');
-  const [showEmpty, setShowEmpty] = useState(true);
 
   const [composing, setComposing] = useState(false);
   const [composeKind, setComposeKind] = useState<'Ask' | 'Recommend'>('Ask');
@@ -35,15 +34,12 @@ export function AskScreen() {
   const [pollDraft, setPollDraft] = useState({ title: '', description: '', optionA: '', optionB: '' });
   const [pollError, setPollError] = useState('');
 
-  if (asks.length === 0 && polls.length === 0 && pros.length === 0 && showEmpty)
+  if (asks.length === 0 && polls.length === 0 && pros.length === 0 && !composing && !composingPoll)
     return (
       <EmptyTab
         config={buildEmptyStates(communityName).ask}
         communityName={communityName}
-        onCta={() => {
-          setShowEmpty(false);
-          setComposing(true);
-        }}
+        onCta={() => setComposing(true)}
       />
     );
 
@@ -118,10 +114,7 @@ export function AskScreen() {
                 variant="outline"
                 size="md"
                 block={false}
-                onPress={() => {
-                  setComposing(false);
-                  setShowEmpty(true);
-                }}
+                onPress={() => setComposing(false)}
                 style={{ paddingHorizontal: 16 }}
               >
                 Cancel
@@ -131,82 +124,38 @@ export function AskScreen() {
         ))}
 
       {tab === 'Open asks' &&
-        asks
-          .filter((p) => !hiddenAskIds.includes(p.id))
-          .map((p, i) => (
-            <Card key={p.id} onPress={() => navigation.navigate('ChatThread', { askId: p.id })} style={{ marginBottom: 12 }}>
-              <View style={styles.askRow}>
-                <PersonLink personId={p.authorId}>
-                  <Avatar initials={p.initials} bg={p.bg} size={38} tilt={i % 2 ? 3 : -3} />
-                </PersonLink>
-                <View style={{ flex: 1 }}>
-                  <View style={styles.askHead}>
-                    <PersonLink personId={p.authorId}>
-                      <Text style={styles.askWho}>{p.who}</Text>
-                    </PersonLink>
-                    <PillTag uppercase>{p.kind}</PillTag>
-                  </View>
-                  <Text style={styles.askText}>{p.text}</Text>
-                  <View style={styles.askMetaRow}>
-                    <MessageCircle size={12} color={theme.colors.grassDeep} />
-                    <Text style={styles.askMeta}>{p.messages.length} messages · Open chat</Text>
-                  </View>
+        asks.map((p, i) => (
+          <Card key={p.id} onPress={() => navigation.navigate('ChatThread', { askId: p.id })} style={{ marginBottom: 12 }}>
+            <View style={styles.askRow}>
+              <PersonLink personId={p.authorId}>
+                <Avatar initials={p.initials} bg={p.bg} size={38} tilt={i % 2 ? 3 : -3} />
+              </PersonLink>
+              <View style={{ flex: 1 }}>
+                <View style={styles.askHead}>
+                  <PersonLink personId={p.authorId}>
+                    <Text style={styles.askWho}>{p.who}</Text>
+                  </PersonLink>
+                  <PillTag uppercase>{p.kind}</PillTag>
                 </View>
-                <View style={styles.askActions}>
-                  <Pressable
-                    hitSlop={8}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      hideAsk(p.id);
-                    }}
-                  >
-                    <EyeOff size={16} color={theme.colors.inkSoft} />
-                  </Pressable>
-                  {isBoardMember && (
-                    <Pressable
-                      hitSlop={8}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        confirmAndRun('Delete this ask?', 'This removes it and its chat for everyone.', 'Delete', () => deleteAsk(p.id));
-                      }}
-                    >
-                      <Trash2 size={16} color={theme.colors.inkSoft} />
-                    </Pressable>
-                  )}
+                <Text style={styles.askText}>{p.text}</Text>
+                <View style={styles.askMetaRow}>
+                  <MessageCircle size={12} color={theme.colors.grassDeep} />
+                  <Text style={styles.askMeta}>{p.messages.length} messages · Open chat</Text>
                 </View>
               </View>
-            </Card>
-          ))}
-
-      {tab === 'Hidden' &&
-        (asks.filter((p) => hiddenAskIds.includes(p.id)).length === 0 ? (
-          <Text style={styles.emptyNote}>Nothing hidden — tap the eye icon on an ask to move it here.</Text>
-        ) : (
-          asks
-            .filter((p) => hiddenAskIds.includes(p.id))
-            .map((p, i) => (
-              <Card key={p.id} onPress={() => navigation.navigate('ChatThread', { askId: p.id })} style={{ marginBottom: 12 }}>
-                <View style={styles.askRow}>
-                  <Avatar initials={p.initials} bg={p.bg} size={38} tilt={i % 2 ? 3 : -3} />
-                  <View style={{ flex: 1 }}>
-                    <View style={styles.askHead}>
-                      <Text style={styles.askWho}>{p.who}</Text>
-                      <PillTag uppercase>{p.kind}</PillTag>
-                    </View>
-                    <Text style={styles.askText}>{p.text}</Text>
-                  </View>
-                  <Pressable
-                    hitSlop={8}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      unhideAsk(p.id);
-                    }}
-                  >
-                    <RotateCcw size={16} color={theme.colors.inkSoft} />
-                  </Pressable>
-                </View>
-              </Card>
-            ))
+              {isBoardMember && (
+                <Pressable
+                  hitSlop={8}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    confirmAndRun('Delete this ask?', 'This removes it and its chat for everyone.', 'Delete', () => deleteAsk(p.id));
+                  }}
+                >
+                  <Trash2 size={16} color={theme.colors.inkSoft} />
+                </Pressable>
+              )}
+            </View>
+          </Card>
         ))}
 
       {tab === 'Trusted pros' &&
@@ -354,7 +303,6 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 12, color: theme.colors.red, fontFamily: theme.font.bodySemibold, marginBottom: 8 },
   rowGap: { flexDirection: 'row', gap: 8, marginTop: 8 },
   askRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  askActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   askHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   askWho: { fontSize: 13, fontFamily: theme.font.bodyBold, color: theme.colors.ink },
   askText: { fontSize: 14, color: theme.colors.ink, marginTop: 4, fontFamily: theme.font.bodyRegular },

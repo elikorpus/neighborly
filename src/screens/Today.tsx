@@ -1,13 +1,15 @@
 import { Calendar, Check, ChevronRight, Send, Trash2 } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Avatar } from '../components/Avatar';
 import { Card } from '../components/Card';
 import { PersonLink } from '../components/PersonLink';
 import { PopIn } from '../components/PopIn';
 import { SectionLabel } from '../components/SectionLabel';
+import { SwipeToHide } from '../components/SwipeToHide';
 import { buildEmptyStates } from '../data/emptyStates';
 import { confirmAndRun } from '../lib/alert';
+import { randomGreeting } from '../lib/greeting';
 import { useAppNavigation } from '../navigation/useAppNavigation';
 import { useAppState } from '../state/AppStateContext';
 import { theme } from '../theme';
@@ -30,23 +32,21 @@ export function TodayScreen() {
     isBoardMember,
     deletePost,
   } = useAppState();
-  const [showEmpty, setShowEmpty] = useState(true);
   const [composing, setComposing] = useState(false);
   const [draft, setDraft] = useState('');
+  const [dismissedNotificationIds, setDismissedNotificationIds] = useState<string[]>([]);
+  const greeting = useMemo(() => randomGreeting(), []);
 
   const upcoming = events.slice(0, 3);
   const newNeighbor = directory.find((p) => !wavedIds.includes(p.id));
-  const recentNotifications = notifications.slice(0, 2);
+  const recentNotifications = notifications.filter((n) => !dismissedNotificationIds.includes(n.id)).slice(0, 2);
 
-  if (upcoming.length === 0 && !newNeighbor && recentNotifications.length === 0 && posts.length === 0 && showEmpty) {
+  if (upcoming.length === 0 && !newNeighbor && recentNotifications.length === 0 && posts.length === 0 && !composing) {
     return (
       <EmptyTab
         config={buildEmptyStates(communityName).today}
         communityName={communityName}
-        onCta={() => {
-          setShowEmpty(false);
-          setComposing(true);
-        }}
+        onCta={() => setComposing(true)}
       />
     );
   }
@@ -62,7 +62,7 @@ export function TodayScreen() {
     <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.headerBlock}>
         <Text style={styles.h1}>
-          Morning, {profile.firstName || 'neighbor'}.{'\n'}
+          {greeting}, {profile.firstName || 'neighbor'}.{'\n'}
           <Text style={{ color: theme.colors.grass }}>
             {upcoming.length} thing{upcoming.length === 1 ? '' : 's'} coming up.
           </Text>
@@ -92,7 +92,6 @@ export function TodayScreen() {
               onPress={() => {
                 setComposing(false);
                 setDraft('');
-                setShowEmpty(true);
               }}
               style={styles.cancelBtn}
             >
@@ -168,17 +167,19 @@ export function TodayScreen() {
 
       {recentNotifications.map((n, i) => (
         <PopIn key={n.id} delay={70 * (upcoming.length + 2 + i)} style={{ marginBottom: 16 }}>
-          <Pressable
-            onPress={() => navigation.navigate('Notifications')}
-            style={styles.notificationRow}
-          >
-            <Text style={{ fontSize: 18 }}>{n.emoji}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>{n.title}</Text>
-              <Text style={styles.cardBody}>{n.sub}</Text>
-            </View>
-            <ChevronRight size={16} color={theme.colors.inkSoft} />
-          </Pressable>
+          <SwipeToHide onHide={() => setDismissedNotificationIds((ids) => [...ids, n.id])}>
+            <Pressable
+              onPress={() => navigation.navigate('Notifications')}
+              style={styles.notificationRow}
+            >
+              <Text style={{ fontSize: 18 }}>{n.emoji}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cardTitle}>{n.title}</Text>
+                <Text style={styles.cardBody}>{n.sub}</Text>
+              </View>
+              <ChevronRight size={16} color={theme.colors.inkSoft} />
+            </Pressable>
+          </SwipeToHide>
         </PopIn>
       ))}
 

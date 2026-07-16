@@ -1,4 +1,4 @@
-import { ArrowLeft, Bot, Landmark, Plus, Send } from 'lucide-react-native';
+import { Archive, ArrowLeft, Bot, Landmark, Plus, RotateCcw, Send } from 'lucide-react-native';
 import React, { useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Avatar } from '../components/Avatar';
@@ -27,8 +27,20 @@ const ENTITY_LABEL: Record<string, string> = {
 };
 
 export function HOAScreen() {
-  const { boardThreads, sendBoardMessage, announcements, addAnnouncement, communityName, isBoardMember, moderationLog } = useAppState();
+  const {
+    boardThreads,
+    sendBoardMessage,
+    announcements,
+    addAnnouncement,
+    communityName,
+    isBoardMember,
+    moderationLog,
+    archivedThreadIds,
+    archiveThread,
+    unarchiveThread,
+  } = useAppState();
   const [mode, setMode] = useState<Mode>('board');
+  const [inboxView, setInboxView] = useState<'active' | 'archived'>('active');
   const [ai, setAi] = useState<DisplayMessage[]>([
     {
       from: 'them',
@@ -186,27 +198,62 @@ export function HOAScreen() {
         </ScrollView>
       ) : showInbox ? (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.messages}>
-          <SectionLabel>Messages from residents</SectionLabel>
-          {boardThreads.length === 0 && <Text style={styles.emptyAnnouncements}>No one has messaged the board yet.</Text>}
-          {boardThreads.map((t) => {
-            const last = t.messages[t.messages.length - 1];
-            return (
-              <Pressable key={t.residentId} onPress={() => setOpenThreadId(t.residentId)} style={styles.threadRow}>
-                <PersonLink personId={t.residentId}>
-                  <Avatar initials={t.initials} bg={t.bg} size={40} tilt={-3} />
-                </PersonLink>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.threadName}>{t.residentName}</Text>
-                  {!!last && (
-                    <Text style={styles.threadPreview} numberOfLines={1}>
-                      {last.fromBoard ? 'You: ' : ''}
-                      {last.text}
-                    </Text>
-                  )}
-                </View>
-              </Pressable>
+          <View style={styles.inboxHeadRow}>
+            <SectionLabel>Messages from residents</SectionLabel>
+            <View style={styles.inboxToggleRow}>
+              <Chip active={inboxView === 'active'} onPress={() => setInboxView('active')}>
+                Inbox
+              </Chip>
+              <Chip active={inboxView === 'archived'} onPress={() => setInboxView('archived')}>
+                Archived
+              </Chip>
+            </View>
+          </View>
+          {(() => {
+            const shown = boardThreads.filter((t) =>
+              inboxView === 'archived' ? archivedThreadIds.includes(t.residentId) : !archivedThreadIds.includes(t.residentId)
             );
-          })}
+            if (shown.length === 0) {
+              return (
+                <Text style={styles.emptyAnnouncements}>
+                  {inboxView === 'archived' ? 'Nothing archived.' : 'No one has messaged the board yet.'}
+                </Text>
+              );
+            }
+            return shown.map((t) => {
+              const last = t.messages[t.messages.length - 1];
+              return (
+                <Pressable key={t.residentId} onPress={() => setOpenThreadId(t.residentId)} style={styles.threadRow}>
+                  <PersonLink personId={t.residentId}>
+                    <Avatar initials={t.initials} bg={t.bg} size={40} tilt={-3} />
+                  </PersonLink>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.threadName}>{t.residentName}</Text>
+                    {!!last && (
+                      <Text style={styles.threadPreview} numberOfLines={1}>
+                        {last.fromBoard ? 'You: ' : ''}
+                        {last.text}
+                      </Text>
+                    )}
+                  </View>
+                  <Pressable
+                    hitSlop={8}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      if (inboxView === 'archived') unarchiveThread(t.residentId);
+                      else archiveThread(t.residentId);
+                    }}
+                  >
+                    {inboxView === 'archived' ? (
+                      <RotateCcw size={16} color={theme.colors.inkSoft} />
+                    ) : (
+                      <Archive size={16} color={theme.colors.inkSoft} />
+                    )}
+                  </Pressable>
+                </Pressable>
+              );
+            });
+          })()}
         </ScrollView>
       ) : (
         <>
@@ -301,6 +348,8 @@ const styles = StyleSheet.create({
   announcementTitle: { fontSize: 15, fontFamily: theme.font.bodyBold, color: theme.colors.ink },
   announcementBody: { fontSize: 13.5, color: theme.colors.ink, marginTop: 4, fontFamily: theme.font.bodyRegular, lineHeight: 13.5 * 1.4 },
   announcementMeta: { fontSize: 11.5, color: theme.colors.inkSoft, fontFamily: theme.font.bodySemibold, marginTop: 8 },
+  inboxHeadRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  inboxToggleRow: { flexDirection: 'row', gap: 6 },
   threadRow: {
     flexDirection: 'row',
     alignItems: 'center',
