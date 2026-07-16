@@ -25,6 +25,7 @@ export function Chip({ children, active = false, onPress }: ChipProps) {
         style={{
           fontFamily: theme.font.bodySemibold,
           fontSize: 13,
+          lineHeight: 16,
           color: active ? theme.colors.paper : theme.colors.ink,
         }}
       >

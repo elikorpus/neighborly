@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
   recenterBtn: {
     position: 'absolute',
     bottom: 12,
-    right: 12,
+    left: 12,
     width: 40,
     height: 40,
     borderRadius: 12,

@@ -116,6 +116,7 @@ export function EventsScreen() {
                 setComposing(false);
                 setDraft(EMPTY_DRAFT);
                 setError('');
+                setShowEmpty(true);
               }}
               style={{ paddingHorizontal: 16 }}
             >

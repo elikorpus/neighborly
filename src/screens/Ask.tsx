@@ -108,7 +108,16 @@ export function AskScreen() {
                   Post to {communityName || 'your neighborhood'}
                 </Button>
               </View>
-              <Button variant="outline" size="md" block={false} onPress={() => setComposing(false)} style={{ paddingHorizontal: 16 }}>
+              <Button
+                variant="outline"
+                size="md"
+                block={false}
+                onPress={() => {
+                  setComposing(false);
+                  setShowEmpty(true);
+                }}
+                style={{ paddingHorizontal: 16 }}
+              >
                 Cancel
               </Button>
             </View>

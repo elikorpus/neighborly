@@ -90,6 +90,7 @@ export function TodayScreen() {
               onPress={() => {
                 setComposing(false);
                 setDraft('');
+                setShowEmpty(true);
               }}
               style={styles.cancelBtn}
             >
