@@ -31,17 +31,16 @@ export function TodayScreen() {
     addPost,
     isBoardMember,
     deletePost,
+    deleteNotification,
   } = useAppState();
   const [composing, setComposing] = useState(false);
   const [draft, setDraft] = useState('');
-  const [dismissedNotificationIds, setDismissedNotificationIds] = useState<string[]>([]);
   const greeting = useMemo(() => randomGreeting(), []);
 
   const upcoming = events.slice(0, 3);
   const newNeighbor = directory.find((p) => !wavedIds.includes(p.id));
-  const recentNotifications = notifications.filter((n) => !dismissedNotificationIds.includes(n.id)).slice(0, 2);
 
-  if (upcoming.length === 0 && !newNeighbor && recentNotifications.length === 0 && posts.length === 0 && !composing) {
+  if (upcoming.length === 0 && !newNeighbor && notifications.length === 0 && posts.length === 0 && !composing) {
     return (
       <EmptyTab
         config={buildEmptyStates(communityName).today}
@@ -165,23 +164,28 @@ export function TodayScreen() {
         </PopIn>
       )}
 
-      {recentNotifications.map((n, i) => (
-        <PopIn key={n.id} delay={70 * (upcoming.length + 2 + i)} style={{ marginBottom: 16 }}>
-          <SwipeToHide onHide={() => setDismissedNotificationIds((ids) => [...ids, n.id])}>
-            <Pressable
-              onPress={() => navigation.navigate('Notifications')}
-              style={styles.notificationRow}
-            >
-              <Text style={{ fontSize: 18 }}>{n.emoji}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cardTitle}>{n.title}</Text>
-                <Text style={styles.cardBody}>{n.sub}</Text>
-              </View>
-              <ChevronRight size={16} color={theme.colors.inkSoft} />
-            </Pressable>
-          </SwipeToHide>
-        </PopIn>
-      ))}
+      {notifications.length > 0 && (
+        <View style={{ marginBottom: 8 }}>
+          <SectionLabel>Notifications</SectionLabel>
+          {notifications.map((n, i) => (
+            <PopIn key={n.id} delay={70 * (upcoming.length + 2 + i)}>
+              <SwipeToHide onHide={() => deleteNotification(n.id)}>
+                <Pressable
+                  onPress={() => navigation.navigate('Notifications')}
+                  style={styles.notificationRow}
+                >
+                  <Text style={{ fontSize: 18 }}>{n.emoji}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardTitle}>{n.title}</Text>
+                    <Text style={styles.cardBody}>{n.sub}</Text>
+                  </View>
+                  <ChevronRight size={16} color={theme.colors.inkSoft} />
+                </Pressable>
+              </SwipeToHide>
+            </PopIn>
+          ))}
+        </View>
+      )}
 
       {posts.length > 0 && (
         <View style={{ marginTop: 8 }}>

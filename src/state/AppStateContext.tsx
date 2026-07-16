@@ -197,6 +197,7 @@ type AppState = {
   readNotificationIds: string[];
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
+  deleteNotification: (id: string) => Promise<void>;
   unreadNotificationCount: number;
 
   // asks + votes
@@ -1016,6 +1017,16 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     await supabase.from('notifications').update({ read: true }).eq('profile_id', myRow.id).eq('read', false);
   }, [myRow]);
 
+  const deleteNotification = useCallback(async (id: string) => {
+    const removed = notificationRows.find((r) => r.id === id);
+    setNotificationRows((rows) => rows.filter((r) => r.id !== id));
+    const { error } = await supabase.from('notifications').delete().eq('id', id);
+    if (error) {
+      if (removed) setNotificationRows((rows) => [...rows, removed]);
+      notify("Couldn't remove", 'Something went wrong removing that notification. Try again.');
+    }
+  }, [notificationRows]);
+
   const addAsk = useCallback(
     async (text: string, kind: 'Borrow' | 'Favor' | 'Recommend' | 'Ask' = 'Ask') => {
       if (!myRow) return;
@@ -1489,6 +1500,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       readNotificationIds,
       markNotificationRead,
       markAllNotificationsRead,
+      deleteNotification,
       unreadNotificationCount,
       addAsk,
       sendChatMessage,
@@ -1558,6 +1570,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       readNotificationIds,
       markNotificationRead,
       markAllNotificationsRead,
+      deleteNotification,
       unreadNotificationCount,
       addAsk,
       sendChatMessage,
