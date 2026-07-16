@@ -21,7 +21,10 @@ const inputStyle: React.CSSProperties = {
   backgroundColor: theme.colors.card,
   outline: 'none',
   width: '100%',
+  maxWidth: '100%',
+  minWidth: 0,
   boxSizing: 'border-box',
+  display: 'block',
 };
 
 /** The browser's own native date/time picker — same guarantee as the native version (an
@@ -47,7 +50,7 @@ export function DateTimeField({ label, mode, value, onChange }: DateTimeFieldPro
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginBottom: 12 },
+  wrap: { marginBottom: 12, width: '100%', minWidth: 0 },
   label: {
     fontFamily: theme.font.bodyBold,
     fontSize: 11,
