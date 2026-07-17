@@ -45,9 +45,9 @@ export const colors = {
 } as const;
 
 export const fontFamilies = {
-  displayMedium: 'Fraunces_500Medium',
-  displaySemibold: 'Fraunces_600SemiBold',
-  displayBold: 'Fraunces_700Bold',
+  displayMedium: 'Pliant_Medium',
+  displaySemibold: 'Pliant_SemiBold',
+  displayBold: 'Pliant_Bold',
   bodyRegular: 'InstrumentSans_400Regular',
   bodyMedium: 'InstrumentSans_500Medium',
   bodySemibold: 'InstrumentSans_600SemiBold',

@@ -14,9 +14,9 @@ SplashScreen.preventAutoHideAsync();
 export default function App() {
   // Load all 7 custom fonts locally from your assets folder
   const [fontsLoaded] = useFonts({
-    'Fraunces_500Medium': require('./assets/fonts/Fraunces_500Medium.ttf'),
-    'Fraunces_600SemiBold': require('./assets/fonts/Fraunces_600SemiBold.ttf'),
-    'Fraunces_700Bold': require('./assets/fonts/Fraunces_700Bold.ttf'),
+    'Pliant_Medium': require('./assets/fonts/Pliant-Medium.ttf'),
+    'Pliant_SemiBold': require('./assets/fonts/Pliant-SemiBold.ttf'),
+    'Pliant_Bold': require('./assets/fonts/Pliant-Bold.ttf'),
     'InstrumentSans_400Regular': require('./assets/fonts/InstrumentSans_400Regular.ttf'),
     'InstrumentSans_500Medium': require('./assets/fonts/InstrumentSans_500Medium.ttf'),
     'InstrumentSans_600SemiBold': require('./assets/fonts/InstrumentSans_600SemiBold.ttf'),
