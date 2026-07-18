@@ -201,7 +201,10 @@ export function OnboardingScreen({ navigation }: Props) {
         {step < TOTAL_STEPS && (
           <View style={styles.header}>
             <View style={styles.headerRow}>
-              <LongLogo height={18} />
+              <View style={styles.headerLogoRow}>
+                <SmallLogo size={24} style={{ borderRadius: 8 }} />
+                <LongLogo height={16} />
+              </View>
               <Pressable onPress={() => (step === 0 ? navigation.goBack() : setStep(step - 1))}>
                 <Text style={styles.backText}>Back</Text>
               </Pressable>
@@ -485,6 +488,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.paper },
   header: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 12 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerLogoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   backText: { fontSize: 13, fontFamily: theme.font.bodyBold, color: theme.colors.inkSoft },
   stepText: { fontSize: 12, color: theme.colors.inkSoft, fontFamily: theme.font.bodySemibold, marginTop: 6 },
   dotsRow: { flexDirection: 'row', gap: 6, marginTop: 8 },
