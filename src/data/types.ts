@@ -121,7 +121,7 @@ export type CommunityBreakdown = {
 
 export type ModerationLogEntry = {
   id: string;
-  entityType: 'club_post' | 'event' | 'community_spot' | 'ask' | 'community_post';
+  entityType: 'club_post' | 'event' | 'community_spot' | 'ask' | 'community_post' | 'poll';
   summary: string;
   who: string;
   when: string;
@@ -159,6 +159,7 @@ export type EventItem = {
   accent: string;
   accentDeep: string;
   desc: string;
+  club?: { id: string; name: string; emoji: string };
 };
 
 export type ChatMessage = {
@@ -177,14 +178,18 @@ export type Ask = {
   messages: ChatMessage[];
 };
 
+export type PollOption = {
+  id: string;
+  text: string;
+  votes: number;
+};
+
 export type Poll = {
   id: string;
   title: string;
   description: string;
-  optionA: string;
-  optionB: string;
-  votesA: number;
-  votesB: number;
+  options: PollOption[];
+  totalVotes: number;
 };
 
 export type Pro = {

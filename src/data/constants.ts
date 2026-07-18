@@ -7,7 +7,20 @@ export type InterestGroup = { category: string; items: string[] };
 export const INTEREST_GROUPS: InterestGroup[] = [
   {
     category: 'Sports & Fitness',
-    items: ['Running', 'Tennis', 'Golf', 'Cycling', 'Yoga', 'Basketball', 'Soccer', 'Swimming', 'Hiking', 'Pickleball'],
+    items: [
+      'Running',
+      'Tennis',
+      'Golf',
+      'Cycling',
+      'Yoga',
+      'Basketball',
+      'Soccer',
+      'Swimming',
+      'Hiking',
+      'Pickleball',
+      'Martial arts',
+      'Weightlifting',
+    ],
   },
   {
     category: 'Food & Drink',

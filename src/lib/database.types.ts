@@ -97,6 +97,7 @@ export type EventRow = {
   accent: string;
   accent_deep: string;
   description: string;
+  club_id: string | null;
   created_at: string;
 };
 
@@ -130,7 +131,14 @@ export type PollRow = {
   created_at: string;
 };
 
-export type PollVoteRow = { poll_id: string; profile_id: string; choice: 'a' | 'b' };
+export type PollOptionRow = {
+  id: string;
+  poll_id: string;
+  position: number;
+  text: string;
+};
+
+export type PollVoteRow = { poll_id: string; profile_id: string; option_id: string; choice: 'a' | 'b' | null };
 
 export type ProRow = {
   id: string;
@@ -243,7 +251,7 @@ export type ModerationLogRow = {
   id: string;
   community_id: string;
   board_profile_id: string | null;
-  entity_type: 'club_post' | 'event' | 'community_spot' | 'ask' | 'community_post';
+  entity_type: 'club_post' | 'event' | 'community_spot' | 'ask' | 'community_post' | 'poll';
   summary: string;
   created_at: string;
 };
@@ -273,6 +281,7 @@ export type Database = {
       asks: Rows<AskRow>;
       ask_messages: Rows<AskMessageRow>;
       polls: Rows<PollRow>;
+      poll_options: Rows<PollOptionRow>;
       poll_votes: Rows<PollVoteRow>;
       pros: Rows<ProRow>;
       notifications: Rows<NotificationRow>;

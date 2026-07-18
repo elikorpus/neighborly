@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
+import { LongLogo } from '../components/Logo';
 import { AuthStackParamList } from '../navigation/types';
 import { useAppState } from '../state/AppStateContext';
 import { theme } from '../theme';
@@ -41,9 +42,10 @@ export function RealtorSignupScreen({ navigation }: Props) {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
           <View style={styles.hero}>
-            <Text style={styles.wordmark}>
-              oneblock<Text style={{ color: theme.colors.grass }}>.</Text> for realtors
-            </Text>
+            <View style={styles.wordmarkRow}>
+              <LongLogo height={18} />
+              <Text style={styles.wordmarkSuffix}>for realtors</Text>
+            </View>
             <Text style={styles.title}>See every community's{'\n'}OneBlock score.</Text>
             <Text style={styles.body}>Realtor accounts are separate from resident accounts — you'll see a scoreboard across every community, not one neighborhood's feed.</Text>
           </View>
@@ -89,7 +91,8 @@ export function RealtorSignupScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.paper },
   hero: { paddingHorizontal: 28, paddingTop: 36, paddingBottom: 12 },
-  wordmark: { fontFamily: theme.font.displayBold, fontSize: 20, color: theme.colors.ink, marginBottom: 18 },
+  wordmarkRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 18 },
+  wordmarkSuffix: { fontFamily: theme.font.bodySemibold, fontSize: 14, color: theme.colors.inkSoft },
   title: {
     fontFamily: theme.font.displaySemibold,
     fontSize: 27,

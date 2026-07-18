@@ -28,11 +28,11 @@ function DateChip({ mon, day, size = 52 }: { mon: string; day: string; size?: nu
 
 const FILTERS = ["RSVP'd", 'All events'] as const;
 
-const EMPTY_DRAFT = { title: '', eventDate: null as Date | null, eventTime: null as Date | null, where: '', description: '' };
+const EMPTY_DRAFT = { title: '', eventDate: null as Date | null, eventTime: null as Date | null, where: '', description: '', clubId: null as string | null };
 
 export function EventsScreen() {
   const navigation = useAppNavigation();
-  const { events, eventRsvps, addEvent, communityName } = useAppState();
+  const { events, eventRsvps, addEvent, communityName, clubs } = useAppState();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("RSVP'd");
   const [composing, setComposing] = useState(false);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
@@ -56,13 +56,15 @@ export function EventsScreen() {
       return;
     }
     setError('');
+    const club = clubs.find((c) => c.id === draft.clubId);
     await addEvent({
-      emoji: '🎉',
+      emoji: club?.emoji || '🎉',
       title: draft.title.trim(),
       eventDate: formatISODate(draft.eventDate),
       eventTime: formatTime12h(draft.eventTime),
       where: draft.where.trim(),
       description: draft.description.trim(),
+      clubId: draft.clubId,
     });
     setDraft(EMPTY_DRAFT);
     setComposing(false);
@@ -88,6 +90,21 @@ export function EventsScreen() {
           <DateTimeField label="Date" mode="date" value={draft.eventDate} onChange={(d) => setDraft({ ...draft, eventDate: d })} />
           <DateTimeField label="Time" mode="time" value={draft.eventTime} onChange={(d) => setDraft({ ...draft, eventTime: d })} />
           <Input label="Where" value={draft.where} onChangeText={(t) => setDraft({ ...draft, where: t })} placeholder="e.g. the cul-de-sac" />
+          {clubs.length > 0 && (
+            <View style={{ marginBottom: 12 }}>
+              <Text style={styles.composeLabel}>For</Text>
+              <View style={styles.chipWrap}>
+                <Chip active={!draft.clubId} onPress={() => setDraft({ ...draft, clubId: null })}>
+                  Everyone
+                </Chip>
+                {clubs.map((c) => (
+                  <Chip key={c.id} active={draft.clubId === c.id} onPress={() => setDraft({ ...draft, clubId: c.id })}>
+                    {c.emoji} {c.name}
+                  </Chip>
+                ))}
+              </View>
+            </View>
+          )}
           <Text style={styles.composeLabel}>Details</Text>
           <TextInput
             value={draft.description}
@@ -139,6 +156,11 @@ export function EventsScreen() {
                 <View style={styles.titleRow}>
                   <Text style={{ fontSize: 16 }}>{e.emoji}</Text>
                   <Text style={styles.eventTitle}>{e.title}</Text>
+                  {!!e.club && (
+                    <View style={styles.clubBadge}>
+                      <Text style={styles.clubBadgeText}>{e.club.name}</Text>
+                    </View>
+                  )}
                 </View>
                 <View style={styles.timeRow}>
                   <CalIcon size={12} color={theme.colors.inkSoft} />
@@ -181,6 +203,7 @@ const styles = StyleSheet.create({
   lead: { fontSize: 14, color: theme.colors.inkSoft, marginTop: 4, fontFamily: theme.font.bodyRegular },
   bold: { color: theme.colors.grass, fontFamily: theme.font.bodyBold },
   tabRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
   composeLabel: { fontSize: 11, fontFamily: theme.font.bodyBold, color: theme.colors.inkSoft, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 },
   composeInput: {
     backgroundColor: theme.colors.paper,
@@ -203,8 +226,10 @@ const styles = StyleSheet.create({
   dateChipMonText: { color: '#fff', fontSize: 10, fontFamily: theme.font.bodyBold, textAlign: 'center', letterSpacing: 1 },
   dateChipDay: { backgroundColor: theme.colors.card, paddingVertical: 3, paddingBottom: 4 },
   dateChipDayText: { fontFamily: theme.font.displayBold, color: theme.colors.ink, textAlign: 'center' },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   eventTitle: { fontFamily: theme.font.displaySemibold, fontSize: 16, color: theme.colors.ink },
+  clubBadge: { backgroundColor: theme.colors.grassPale, borderRadius: theme.radius.pill, paddingVertical: 2, paddingHorizontal: 8 },
+  clubBadgeText: { fontSize: 10.5, fontFamily: theme.font.bodyBold, color: theme.colors.grassDeep },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
   eventTime: { fontSize: 12.5, color: theme.colors.inkSoft, fontFamily: theme.font.bodyRegular },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },

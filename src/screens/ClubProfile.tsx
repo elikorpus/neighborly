@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Calendar, Check, MapPin, Send, Trash2 } from 'lucide-react-native';
+import { Calendar, Check, ChevronRight, MapPin, Send, Trash2 } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Avatar } from '../components/Avatar';
@@ -16,10 +16,11 @@ type Props = NativeStackScreenProps<AppStackParamList, 'ClubProfile'>;
 
 export function ClubProfileScreen({ route, navigation }: Props) {
   const { clubId } = route.params;
-  const { clubs, joinedClubIds, toggleClubJoined, clubEventRsvps, toggleClubEventRsvp, addClubPost, isBoardMember, deleteClubPost } = useAppState();
+  const { clubs, joinedClubIds, toggleClubJoined, clubEventRsvps, toggleClubEventRsvp, addClubPost, isBoardMember, deleteClubPost, events } = useAppState();
   const club = clubs.find((c) => c.id === clubId);
   const joined = club ? joinedClubIds.includes(club.id) : false;
   const rsvp = club ? !!clubEventRsvps[club.id] : false;
+  const clubEvents = club ? events.filter((e) => e.club?.id === club.id) : [];
   const [postDraft, setPostDraft] = useState('');
 
   if (!club) {
@@ -47,7 +48,7 @@ export function ClubProfileScreen({ route, navigation }: Props) {
             </View>
           </View>
           <View style={styles.badgeRow}>
-            {[`${count} members`, club.meets, club.since].map((s) => (
+            {[`${count} members`, club.meets, club.since].filter(Boolean).map((s) => (
               <View key={s} style={styles.badge}>
                 <Text style={styles.badgeText}>{s}</Text>
               </View>
@@ -70,27 +71,56 @@ export function ClubProfileScreen({ route, navigation }: Props) {
             )}
           </Pressable>
 
-          <SectionLabel>About</SectionLabel>
-          <Text style={styles.about}>{club.about}</Text>
+          {!!club.about && (
+            <>
+              <SectionLabel>About</SectionLabel>
+              <Text style={styles.about}>{club.about}</Text>
+            </>
+          )}
 
-          <SectionLabel>Next up</SectionLabel>
-          <Card style={{ marginBottom: 20, borderColor: club.accentDeep, borderWidth: 2 }}>
-            <Text style={styles.nextTitle}>{club.next.title}</Text>
-            <View style={styles.nextMetaRow}>
-              <Calendar size={13} color={theme.colors.inkSoft} />
-              <Text style={styles.nextMeta}>{club.next.when} · </Text>
-              <MapPin size={13} color={theme.colors.inkSoft} />
-              <Text style={styles.nextMeta}>{club.next.where}</Text>
-            </View>
-            <Pressable
-              onPress={() => toggleClubEventRsvp(club.id)}
-              style={[styles.rsvpBtn, { backgroundColor: rsvp ? club.accentDeep : theme.colors.paper, borderColor: rsvp ? club.accentDeep : theme.colors.line }]}
-            >
-              <Text style={[styles.rsvpText, { color: rsvp ? '#fff' : theme.colors.ink }]}>
-                {rsvp ? `✓ You're in — ${club.next.going} going` : `RSVP · ${club.next.going} going`}
-              </Text>
-            </Pressable>
-          </Card>
+          {!!club.next.title && (
+            <>
+              <SectionLabel>Next up</SectionLabel>
+              <Card style={{ marginBottom: 20, borderColor: club.accentDeep, borderWidth: 2 }}>
+                <Text style={styles.nextTitle}>{club.next.title}</Text>
+                <View style={styles.nextMetaRow}>
+                  <Calendar size={13} color={theme.colors.inkSoft} />
+                  <Text style={styles.nextMeta}>{club.next.when} · </Text>
+                  <MapPin size={13} color={theme.colors.inkSoft} />
+                  <Text style={styles.nextMeta}>{club.next.where}</Text>
+                </View>
+                <Pressable
+                  onPress={() => toggleClubEventRsvp(club.id)}
+                  style={[styles.rsvpBtn, { backgroundColor: rsvp ? club.accentDeep : theme.colors.paper, borderColor: rsvp ? club.accentDeep : theme.colors.line }]}
+                >
+                  <Text style={[styles.rsvpText, { color: rsvp ? '#fff' : theme.colors.ink }]}>
+                    {rsvp ? `✓ You're in — ${club.next.going} going` : `RSVP · ${club.next.going} going`}
+                  </Text>
+                </Pressable>
+              </Card>
+            </>
+          )}
+
+          {clubEvents.length > 0 && (
+            <>
+              <SectionLabel>Upcoming events</SectionLabel>
+              {clubEvents.map((e) => (
+                <Card key={e.id} onPress={() => navigation.navigate('EventDetail', { eventId: e.id })} style={{ marginBottom: 12 }}>
+                  <View style={styles.rowCenter}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.leadName}>
+                        {e.emoji} {e.title}
+                      </Text>
+                      <Text style={styles.leadJob}>
+                        {e.mon} {e.day} · {e.time} · {e.going} going
+                      </Text>
+                    </View>
+                    <ChevronRight size={16} color={theme.colors.inkSoft} />
+                  </View>
+                </Card>
+              ))}
+            </>
+          )}
 
           <SectionLabel>Run by</SectionLabel>
           <Card style={{ marginBottom: 20 }}>
@@ -99,7 +129,7 @@ export function ClubProfileScreen({ route, navigation }: Props) {
               <View style={{ flex: 1 }}>
                 <Text style={styles.leadName}>{club.lead.name}</Text>
                 <Text style={styles.leadJob}>{club.lead.job}</Text>
-                <Text style={styles.leadSpot}>Meets at {club.spot}</Text>
+                {!!club.spot && <Text style={styles.leadSpot}>Meets at {club.spot}</Text>}
               </View>
             </PersonLink>
           </Card>
@@ -116,15 +146,19 @@ export function ClubProfileScreen({ route, navigation }: Props) {
             <Text style={styles.moreMembers}>+{count - club.roster.length} more neighbors</Text>
           </View>
 
-          <SectionLabel>House rules</SectionLabel>
-          <Card style={{ marginBottom: 20, backgroundColor: club.accent, borderColor: theme.colors.ink }}>
-            {club.rules.map((r, i) => (
-              <View key={i} style={styles.ruleRow}>
-                <Text style={[styles.ruleIndex, { color: club.accentDeep }]}>{i + 1}.</Text>
-                <Text style={styles.ruleText}>{r}</Text>
-              </View>
-            ))}
-          </Card>
+          {club.rules.length > 0 && (
+            <>
+              <SectionLabel>House rules</SectionLabel>
+              <Card style={{ marginBottom: 20, backgroundColor: club.accent, borderColor: theme.colors.ink }}>
+                {club.rules.map((r, i) => (
+                  <View key={i} style={styles.ruleRow}>
+                    <Text style={[styles.ruleIndex, { color: club.accentDeep }]}>{i + 1}.</Text>
+                    <Text style={styles.ruleText}>{r}</Text>
+                  </View>
+                ))}
+              </Card>
+            </>
+          )}
 
           <SectionLabel>Recent activity</SectionLabel>
           {joined && (

@@ -101,6 +101,13 @@ export function EventDetailScreen({ route, navigation }: Props) {
                   {ev.mon} {ev.day} · {ev.time}
                 </Text>
               </View>
+              {!!ev.club && (
+                <Pressable onPress={() => navigation.navigate('ClubProfile', { clubId: ev.club!.id })} style={styles.clubPill}>
+                  <Text style={styles.clubPillText}>
+                    {ev.club.emoji} For {ev.club.name}
+                  </Text>
+                </Pressable>
+              )}
             </View>
           </View>
         </View>
@@ -195,6 +202,17 @@ const styles = StyleSheet.create({
   title: { fontFamily: theme.font.displayBold, fontSize: 23, color: theme.colors.ink, lineHeight: 23 * 1.12 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   metaText: { fontSize: 13, fontFamily: theme.font.bodyBold },
+  clubPill: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    backgroundColor: 'rgba(255,255,255,.75)',
+    borderWidth: theme.border.width,
+    borderColor: theme.colors.ink,
+    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+  },
+  clubPillText: { fontSize: 11.5, fontFamily: theme.font.bodyBold, color: theme.colors.ink },
   body: { padding: 20 },
   whereText: { fontSize: 14, fontFamily: theme.font.bodySemibold, color: theme.colors.ink },
   desc: { fontSize: 14, color: theme.colors.ink, lineHeight: 14 * 1.55, marginBottom: 20, fontFamily: theme.font.bodyRegular },

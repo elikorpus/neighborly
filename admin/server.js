@@ -209,8 +209,22 @@ app.delete(
     // profiles.id references auth.users(id) on delete cascade, so deleting the
     // auth user cascades to the profile and everything tied to it (asks, posts,
     // messages, RSVPs, waves, etc.); their house (if any) reverts to unclaimed.
-    const { error } = await supabase.auth.admin.deleteUser(req.params.id);
+    const { data: userData } = await supabase.auth.admin.getUserById(req.params.id);
+    const email = userData?.user?.email || null;
+
+    // `false` = hard delete (not a soft/tombstone delete), so the email is
+    // immediately free to sign up again.
+    const { error } = await supabase.auth.admin.deleteUser(req.params.id, false);
     if (error) throw error;
+
+    // Belt-and-suspenders: some projects leave a stale auth.identities row
+    // behind a hard delete, which blocks re-signup with "User already
+    // registered" even though the account is gone. Clean that up too.
+    if (email) {
+      const { error: purgeError } = await supabase.rpc('purge_orphaned_auth_identities', { target_email: email });
+      if (purgeError) console.warn(`Could not purge orphaned auth identities for ${email}:`, purgeError.message);
+    }
+
     res.json({ ok: true });
   })
 );
@@ -270,8 +284,17 @@ app.delete(
   '/api/realtor-accounts/:id',
   asyncRoute(async (req, res) => {
     // Deleting the auth user cascades to realtor_accounts (on delete cascade).
-    const { error } = await supabase.auth.admin.deleteUser(req.params.id);
+    const { data: userData } = await supabase.auth.admin.getUserById(req.params.id);
+    const email = userData?.user?.email || null;
+
+    const { error } = await supabase.auth.admin.deleteUser(req.params.id, false);
     if (error) throw error;
+
+    if (email) {
+      const { error: purgeError } = await supabase.rpc('purge_orphaned_auth_identities', { target_email: email });
+      if (purgeError) console.warn(`Could not purge orphaned auth identities for ${email}:`, purgeError.message);
+    }
+
     res.json({ ok: true });
   })
 );

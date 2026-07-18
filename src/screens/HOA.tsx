@@ -24,6 +24,8 @@ const ENTITY_LABEL: Record<string, string> = {
   event: '📅 Event',
   community_spot: '📍 Spot',
   ask: '🤝 Ask',
+  community_post: '📰 Post',
+  poll: '🗳️ Vote',
 };
 
 export function HOAScreen() {

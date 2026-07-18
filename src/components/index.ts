@@ -4,6 +4,7 @@ export * from './Button';
 export * from './Card';
 export * from './Chip';
 export * from './Input';
+export * from './Logo';
 export * from './PillTag';
 export * from './PopIn';
 export * from './PulseDot';

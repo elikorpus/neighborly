@@ -1,4 +1,4 @@
-import { MessageCircle, Plus, Scale, Trash2 } from 'lucide-react-native';
+import { MessageCircle, Plus, Scale, Trash2, X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Avatar } from '../components/Avatar';
@@ -23,7 +23,7 @@ const RECOMMEND_PLACEHOLDER = 'e.g. I need an electrician who can come out this 
 
 export function AskScreen() {
   const navigation = useAppNavigation();
-  const { asks, addAsk, polls, votes, vote, addPoll, pros, communityName, isBoardMember, deleteAsk } = useAppState();
+  const { asks, addAsk, polls, votes, vote, addPoll, deletePoll, pros, communityName, isBoardMember, deleteAsk } = useAppState();
   const [tab, setTab] = useState<TabName>('Open asks');
 
   const [composing, setComposing] = useState(false);
@@ -31,8 +31,16 @@ export function AskScreen() {
   const [draft, setDraft] = useState('');
 
   const [composingPoll, setComposingPoll] = useState(false);
-  const [pollDraft, setPollDraft] = useState({ title: '', description: '', optionA: '', optionB: '' });
+  const [pollDraft, setPollDraft] = useState({ title: '', description: '', options: ['', ''] });
   const [pollError, setPollError] = useState('');
+
+  const MAX_POLL_OPTIONS = 8;
+  const setPollOption = (i: number, text: string) =>
+    setPollDraft((d) => ({ ...d, options: d.options.map((o, idx) => (idx === i ? text : o)) }));
+  const addPollOption = () =>
+    setPollDraft((d) => (d.options.length >= MAX_POLL_OPTIONS ? d : { ...d, options: [...d.options, ''] }));
+  const removePollOption = (i: number) =>
+    setPollDraft((d) => (d.options.length <= 2 ? d : { ...d, options: d.options.filter((_, idx) => idx !== i) }));
 
   if (asks.length === 0 && polls.length === 0 && pros.length === 0 && !composing && !composingPoll)
     return (
@@ -51,18 +59,18 @@ export function AskScreen() {
   };
 
   const submitPoll = async () => {
-    if (!pollDraft.title.trim() || !pollDraft.optionA.trim() || !pollDraft.optionB.trim()) {
-      setPollError('Add a title and both options.');
+    const cleanedOptions = pollDraft.options.map((o) => o.trim()).filter(Boolean);
+    if (!pollDraft.title.trim() || cleanedOptions.length < 2) {
+      setPollError('Add a title and at least two options.');
       return;
     }
     setPollError('');
     await addPoll({
       title: pollDraft.title.trim(),
       description: pollDraft.description.trim(),
-      optionA: pollDraft.optionA.trim(),
-      optionB: pollDraft.optionB.trim(),
+      options: cleanedOptions,
     });
-    setPollDraft({ title: '', description: '', optionA: '', optionB: '' });
+    setPollDraft({ title: '', description: '', options: ['', ''] });
     setComposingPoll(false);
   };
 
@@ -199,8 +207,23 @@ export function AskScreen() {
                   onChangeText={(t) => setPollDraft({ ...pollDraft, description: t })}
                   placeholder="Any context residents should know"
                 />
-                <Input label="Option 1" value={pollDraft.optionA} onChangeText={(t) => setPollDraft({ ...pollDraft, optionA: t })} placeholder="e.g. Yes, replace it" />
-                <Input label="Option 2" value={pollDraft.optionB} onChangeText={(t) => setPollDraft({ ...pollDraft, optionB: t })} placeholder="e.g. No, keep as is" />
+                {pollDraft.options.map((opt, i) => (
+                  <View key={i} style={styles.pollOptionRow}>
+                    <View style={{ flex: 1 }}>
+                      <Input label={`Option ${i + 1}`} value={opt} onChangeText={(t) => setPollOption(i, t)} placeholder="e.g. Yes, replace it" />
+                    </View>
+                    {pollDraft.options.length > 2 && (
+                      <Pressable onPress={() => removePollOption(i)} hitSlop={8} style={styles.pollOptionRemoveBtn}>
+                        <X size={16} color={theme.colors.inkSoft} />
+                      </Pressable>
+                    )}
+                  </View>
+                ))}
+                {pollDraft.options.length < MAX_POLL_OPTIONS && (
+                  <Pressable onPress={addPollOption} style={styles.addOptionBtn}>
+                    <Text style={styles.addOptionText}>+ Add another option</Text>
+                  </Pressable>
+                )}
                 {!!pollError && <Text style={styles.errorText}>{pollError}</Text>}
                 <View style={styles.rowGap}>
                   <View style={{ flex: 1 }}>
@@ -238,37 +261,53 @@ export function AskScreen() {
           )}
 
           {polls.map((p) => {
-            const total = p.votesA + p.votesB;
-            const pctA = total > 0 ? Math.round((p.votesA / total) * 100) : 0;
-            const voted = votes[p.id];
+            const votedOptionId = votes[p.id];
             return (
               <Card key={p.id} style={{ marginBottom: 12 }}>
-                <Text style={styles.pollTitle}>{p.title}</Text>
-                {!!p.description && <Text style={styles.pollDesc}>{p.description}</Text>}
-                {!voted ? (
-                  <View style={styles.rowGap}>
-                    <Pressable style={styles.voteBtn} onPress={() => vote(p.id, 'a')}>
-                      <Text style={styles.voteBtnText}>{p.optionA}</Text>
+                <View style={styles.pollHeadRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.pollTitle}>{p.title}</Text>
+                    {!!p.description && <Text style={styles.pollDesc}>{p.description}</Text>}
+                  </View>
+                  {isBoardMember && (
+                    <Pressable
+                      hitSlop={8}
+                      onPress={() => confirmAndRun('Delete this vote?', 'This removes it and every vote cast for everyone.', 'Delete', () => deletePoll(p.id))}
+                    >
+                      <Trash2 size={16} color={theme.colors.inkSoft} />
                     </Pressable>
-                    <Pressable style={styles.voteBtn} onPress={() => vote(p.id, 'b')}>
-                      <Text style={styles.voteBtnText}>{p.optionB}</Text>
-                    </Pressable>
+                  )}
+                </View>
+                {!votedOptionId ? (
+                  <View style={{ gap: 8, marginTop: 8 }}>
+                    {p.options.map((o) => (
+                      <Pressable key={o.id} style={styles.voteBtn} onPress={() => vote(p.id, o.id)}>
+                        <Text style={styles.voteBtnText}>{o.text}</Text>
+                      </Pressable>
+                    ))}
                   </View>
                 ) : (
-                  <View style={{ marginTop: 12 }}>
-                    <View style={styles.voteBar}>
-                      <View style={{ width: `${pctA}%`, backgroundColor: theme.colors.grass }} />
-                      <View style={{ flex: 1, backgroundColor: theme.colors.red }} />
-                    </View>
-                    <View style={styles.rowBetween}>
-                      <Text style={[styles.votePct, { color: theme.colors.grassDeep }]}>
-                        {pctA}% {p.optionA} ({p.votesA})
-                      </Text>
-                      <Text style={[styles.votePct, { color: theme.colors.red }]}>
-                        {100 - pctA}% {p.optionB} ({p.votesB})
-                      </Text>
-                    </View>
-                    <Text style={styles.voteNote}>You voted {voted === 'a' ? p.optionA : p.optionB}.</Text>
+                  <View style={{ marginTop: 12, gap: 10 }}>
+                    {p.options.map((o) => {
+                      const pct = p.totalVotes > 0 ? Math.round((o.votes / p.totalVotes) * 100) : 0;
+                      const mine = o.id === votedOptionId;
+                      return (
+                        <View key={o.id}>
+                          <View style={styles.optionBarTrack}>
+                            <View style={[styles.optionBarFill, { width: `${pct}%`, backgroundColor: mine ? theme.colors.grass : theme.colors.inkSoft }]} />
+                          </View>
+                          <View style={styles.rowBetween}>
+                            <Text style={[styles.votePct, mine && { color: theme.colors.grassDeep }]}>
+                              {o.text}
+                              {mine ? ' · your vote' : ''}
+                            </Text>
+                            <Text style={styles.votePct}>
+                              {pct}% ({o.votes})
+                            </Text>
+                          </View>
+                        </View>
+                      );
+                    })}
                   </View>
                 )}
               </Card>
@@ -316,11 +355,16 @@ const styles = StyleSheet.create({
   proBadgeText: { fontSize: 12, fontFamily: theme.font.bodyBold, color: theme.colors.marigoldInk, textAlign: 'center' },
   voteIntro: { fontSize: 13, color: theme.colors.grassDeep, fontFamily: theme.font.bodySemibold, flex: 1 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
+  pollHeadRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   pollTitle: { fontSize: 15, fontFamily: theme.font.bodyBold, color: theme.colors.ink },
   pollDesc: { fontSize: 12.5, color: theme.colors.inkSoft, marginTop: 4, fontFamily: theme.font.bodyRegular },
-  voteBtn: { flex: 1, paddingVertical: 10, borderRadius: theme.radius.md, backgroundColor: theme.colors.paper, borderWidth: theme.border.width, borderColor: theme.colors.line, alignItems: 'center' },
+  pollOptionRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
+  pollOptionRemoveBtn: { paddingBottom: 12 },
+  addOptionBtn: { paddingVertical: 10, alignItems: 'center', marginBottom: 4 },
+  addOptionText: { color: theme.colors.grassDeep, fontFamily: theme.font.bodyBold, fontSize: 13 },
+  voteBtn: { paddingVertical: 10, borderRadius: theme.radius.md, backgroundColor: theme.colors.paper, borderWidth: theme.border.width, borderColor: theme.colors.line, alignItems: 'center' },
   voteBtnText: { fontFamily: theme.font.bodyBold, fontSize: 13, color: theme.colors.ink },
-  voteBar: { backgroundColor: theme.colors.paper, borderRadius: theme.radius.pill, height: 22, borderWidth: theme.border.width, borderColor: theme.colors.line, overflow: 'hidden', flexDirection: 'row' },
-  votePct: { fontSize: 12, fontFamily: theme.font.bodyBold, marginTop: 6 },
-  voteNote: { fontSize: 11, color: theme.colors.inkSoft, fontFamily: theme.font.bodySemibold, marginTop: 4 },
+  optionBarTrack: { backgroundColor: theme.colors.paper, borderRadius: theme.radius.pill, height: 12, borderWidth: theme.border.width, borderColor: theme.colors.line, overflow: 'hidden' },
+  optionBarFill: { height: '100%' },
+  votePct: { fontSize: 12, fontFamily: theme.font.bodyBold, marginTop: 4 },
 });

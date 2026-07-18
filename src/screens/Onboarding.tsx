@@ -3,7 +3,6 @@ import { ArrowRight, MapPin, Trash2 } from 'lucide-react-native';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
-  Dimensions,
   Easing,
   Keyboard,
   KeyboardAvoidingView,
@@ -20,6 +19,7 @@ import { Avatar } from '../components/Avatar';
 import { Button } from '../components/Button';
 import { Chip } from '../components/Chip';
 import { Input } from '../components/Input';
+import { LongLogo, SmallLogo } from '../components/Logo';
 import { INTEREST_GROUPS, TENURE } from '../data/constants';
 import { FamilyMember, House } from '../data/types';
 import { supabase } from '../lib/supabase';
@@ -29,29 +29,24 @@ import { theme } from '../theme';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Onboarding'>;
 
-const CONFETTI_EMOJIS = ['🎉', '👋', '🌮', '🐶', '🎾', '☕', '📚', '🌱', '🏡', '✨', '🎈', '🌻', '🍕', '⚽', '🎨', '🐾'];
-const CONFETTI_COUNT = 28;
+const RIPPLE_COUNT = 10;
 const TOTAL_STEPS = 5;
 
-type ConfettiSpec = {
-  emoji: string;
+type RippleSpec = {
   left: number;
+  top: number;
   size: number;
   duration: number;
   delay: number;
-  sway: number;
-  rotateDir: 1 | -1;
 };
 
-function makeConfettiSpecs(): ConfettiSpec[] {
-  return Array.from({ length: CONFETTI_COUNT }, (_, i) => ({
-    emoji: CONFETTI_EMOJIS[i % CONFETTI_EMOJIS.length],
-    left: 1 + Math.random() * 96,
-    size: 14 + Math.random() * 18,
-    duration: 3000 + Math.random() * 2400,
-    delay: Math.random() * 3200,
-    sway: 12 + Math.random() * 26,
-    rotateDir: Math.random() > 0.5 ? 1 : -1,
+function makeRippleSpecs(): RippleSpec[] {
+  return Array.from({ length: RIPPLE_COUNT }, () => ({
+    left: 4 + Math.random() * 92,
+    top: 6 + Math.random() * 88,
+    size: 70 + Math.random() * 90,
+    duration: 2800 + Math.random() * 2200,
+    delay: Math.random() * 3400,
   }));
 }
 
@@ -71,9 +66,9 @@ function Dots({ step }: { step: number }) {
   );
 }
 
-function ConfettiPiece({ spec }: { spec: ConfettiSpec }) {
+/** Signature-green rings that expand outward and fade — a soft, low-opacity ripple. */
+function RipplePiece({ spec }: { spec: RippleSpec }) {
   const progress = useRef(new Animated.Value(0)).current;
-  const { height } = Dimensions.get('window');
   useEffect(() => {
     const anim = Animated.loop(
       Animated.sequence([
@@ -81,7 +76,7 @@ function ConfettiPiece({ spec }: { spec: ConfettiSpec }) {
         Animated.timing(progress, {
           toValue: 1,
           duration: spec.duration,
-          easing: Easing.in(Easing.quad),
+          easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
       ])
@@ -91,32 +86,22 @@ function ConfettiPiece({ spec }: { spec: ConfettiSpec }) {
   }, [progress, spec.delay, spec.duration]);
 
   return (
-    <Animated.Text
+    <Animated.View
       style={{
         position: 'absolute',
         left: `${spec.left}%`,
-        top: -24,
-        fontSize: spec.size,
-        opacity: progress.interpolate({ inputRange: [0, 0.08, 0.85, 1], outputRange: [0, 1, 1, 0] }),
-        transform: [
-          { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [0, height * 0.85] }) },
-          {
-            translateX: progress.interpolate({
-              inputRange: [0, 0.25, 0.5, 0.75, 1],
-              outputRange: [0, spec.sway, 0, -spec.sway, 0],
-            }),
-          },
-          {
-            rotate: progress.interpolate({
-              inputRange: [0, 1],
-              outputRange: ['0deg', `${360 * spec.rotateDir}deg`],
-            }),
-          },
-        ],
+        top: `${spec.top}%`,
+        width: spec.size,
+        height: spec.size,
+        marginLeft: -spec.size / 2,
+        marginTop: -spec.size / 2,
+        borderRadius: spec.size / 2,
+        borderWidth: 2,
+        borderColor: theme.colors.grass,
+        opacity: progress.interpolate({ inputRange: [0, 0.12, 0.7, 1], outputRange: [0, 0.16, 0.08, 0] }),
+        transform: [{ scale: progress.interpolate({ inputRange: [0, 1], outputRange: [0.25, 2.4] }) }],
       }}
-    >
-      {spec.emoji}
-    </Animated.Text>
+    />
   );
 }
 
@@ -149,7 +134,7 @@ export function OnboardingScreen({ navigation }: Props) {
   const [picked, setPicked] = useState<string[]>([]);
   const [finishing, setFinishing] = useState(false);
   const [finishError, setFinishError] = useState('');
-  const confettiSpecs = useMemo(() => makeConfettiSpecs(), []);
+  const rippleSpecs = useMemo(() => makeRippleSpecs(), []);
 
   const emailOk = /\S+@\S+\.\S+/.test(email.trim());
   const codeOk = code.trim().length >= 4 && emailOk && password.length >= 6;
@@ -216,9 +201,7 @@ export function OnboardingScreen({ navigation }: Props) {
         {step < TOTAL_STEPS && (
           <View style={styles.header}>
             <View style={styles.headerRow}>
-              <Text style={styles.wordmark}>
-                oneblock<Text style={{ color: theme.colors.grass }}>.</Text>
-              </Text>
+              <LongLogo height={18} />
               <Pressable onPress={() => (step === 0 ? navigation.goBack() : setStep(step - 1))}>
                 <Text style={styles.backText}>Back</Text>
               </Pressable>
@@ -470,12 +453,12 @@ export function OnboardingScreen({ navigation }: Props) {
 
         {step === 5 && (
           <View style={styles.confettiScreen}>
-            {confettiSpecs.map((spec, i) => (
-              <ConfettiPiece key={i} spec={spec} />
+            {rippleSpecs.map((spec, i) => (
+              <RipplePiece key={i} spec={spec} />
             ))}
             <View style={styles.confettiCenter}>
               <View style={styles.confettiBadge}>
-                <Text style={{ fontSize: 40 }}>🏡</Text>
+                <SmallLogo size={62} style={{ borderRadius: 20 }} />
               </View>
               <Text style={styles.confettiTitle}>
                 You're in,{'\n'}
@@ -502,7 +485,6 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.paper },
   header: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 12 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  wordmark: { fontFamily: theme.font.displayBold, fontSize: 22, color: theme.colors.ink },
   backText: { fontSize: 13, fontFamily: theme.font.bodyBold, color: theme.colors.inkSoft },
   stepText: { fontSize: 12, color: theme.colors.inkSoft, fontFamily: theme.font.bodySemibold, marginTop: 6 },
   dotsRow: { flexDirection: 'row', gap: 6, marginTop: 8 },
@@ -602,12 +584,13 @@ const styles = StyleSheet.create({
   confettiBadge: {
     width: 84,
     height: 84,
-    backgroundColor: theme.colors.grass,
+    backgroundColor: theme.colors.paper,
     borderWidth: theme.border.avatar,
     borderColor: theme.colors.ink,
     borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
     transform: [{ rotate: '-4deg' }],
     marginBottom: 24,
     ...theme.hardShadow('lg'),

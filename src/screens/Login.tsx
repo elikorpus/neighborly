@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
+import { LongLogo, SmallLogo } from '../components/Logo';
 import { supabase } from '../lib/supabase';
 import { AuthStackParamList } from '../navigation/types';
 import { theme } from '../theme';
@@ -33,11 +34,9 @@ export function LoginScreen({ navigation }: Props) {
         <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
           <View style={styles.hero}>
             <View style={styles.badge}>
-              <Text style={styles.badgeEmoji}>🏡</Text>
+              <SmallLogo size={64} style={{ borderRadius: 22 }} />
             </View>
-            <Text style={styles.wordmark}>
-              oneblock<Text style={{ color: theme.colors.grass }}>.</Text>
-            </Text>
+            <LongLogo height={24} style={{ marginBottom: 6 }} />
             <Text style={styles.title}>Welcome back{'\n'}to the street.</Text>
             <Text style={styles.body}>
               One private, verified place for the people who actually live on your street. No strangers, no ads
@@ -94,18 +93,17 @@ const styles = StyleSheet.create({
   badge: {
     width: 84,
     height: 84,
-    backgroundColor: theme.colors.grass,
+    backgroundColor: theme.colors.paper,
     borderWidth: theme.border.avatar,
     borderColor: theme.colors.ink,
     borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
     transform: [{ rotate: '-4deg' }],
     marginBottom: 26,
     ...theme.hardShadow('lg'),
   },
-  badgeEmoji: { fontSize: 40 },
-  wordmark: { fontFamily: theme.font.displayBold, fontSize: 26, color: theme.colors.ink, marginBottom: 6 },
   title: {
     fontFamily: theme.font.displaySemibold,
     fontSize: 30,

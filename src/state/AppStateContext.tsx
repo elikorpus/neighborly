@@ -43,6 +43,7 @@ import {
   AnnouncementRow,
   ModerationLogRow,
   NotificationRow,
+  PollOptionRow,
   PollRow,
   PollVoteRow,
   ProRow,
@@ -56,7 +57,6 @@ import { supabase } from '../lib/supabase';
 import { theme } from '../theme';
 
 export type Profile = ProfileData;
-type Vote = 'a' | 'b';
 
 /** Optimistic rows get one of these as their id until the real insert resolves. */
 function makeTempId(): string {
@@ -173,7 +173,7 @@ type AppState = {
   matches: MatchNeighbor[];
   clubs: Club[];
   events: EventItem[];
-  addEvent: (args: { emoji: string; title: string; eventDate: string; eventTime: string; where: string; description: string }) => Promise<void>;
+  addEvent: (args: { emoji: string; title: string; eventDate: string; eventTime: string; where: string; description: string; clubId?: string | null }) => Promise<void>;
   asks: Ask[];
   polls: Poll[];
   pros: Pro[];
@@ -203,9 +203,9 @@ type AppState = {
   // asks + votes
   addAsk: (text: string, kind?: 'Borrow' | 'Favor' | 'Recommend' | 'Ask') => void;
   sendChatMessage: (askId: string, text: string) => void;
-  votes: Record<string, Vote>;
-  vote: (pollId: string, which: Vote) => void;
-  addPoll: (args: { title: string; description: string; optionA: string; optionB: string }) => Promise<void>;
+  votes: Record<string, string>;
+  vote: (pollId: string, optionId: string) => void;
+  addPoll: (args: { title: string; description: string; options: string[] }) => Promise<void>;
 
   // event RSVPs
   eventRsvps: Record<string, boolean>;
@@ -221,6 +221,7 @@ type AppState = {
   addClubPost: (clubId: string, text: string) => Promise<void>;
   clubEventRsvps: Record<string, boolean>;
   toggleClubEventRsvp: (clubId: string) => void;
+  createClub: (args: { name: string; emoji: string; tagline: string; meets: string; about: string }) => Promise<void>;
 
   // community posts (Today feed "share something")
   posts: CommunityPost[];
@@ -233,6 +234,7 @@ type AppState = {
   deleteSpot: (spotId: string) => Promise<void>;
   deleteAsk: (askId: string) => Promise<void>;
   deletePost: (postId: string) => Promise<void>;
+  deletePoll: (pollId: string) => Promise<void>;
 };
 
 const AppStateContext = createContext<AppState | null>(null);
@@ -256,6 +258,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const [askMessageRows, setAskMessageRows] = useState<AskMessageRow[]>([]);
   const [boardThreadArchiveRows, setBoardThreadArchiveRows] = useState<BoardThreadArchiveRow[]>([]);
   const [pollRows, setPollRows] = useState<PollRow[]>([]);
+  const [pollOptionRows, setPollOptionRows] = useState<PollOptionRow[]>([]);
   const [pollVoteRows, setPollVoteRows] = useState<PollVoteRow[]>([]);
   const [proRows, setProRows] = useState<ProRow[]>([]);
   const [notificationRows, setNotificationRows] = useState<NotificationRow[]>([]);
@@ -317,6 +320,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       askRes,
       askMessageRes,
       pollRes,
+      pollOptionRes,
       pollVoteRes,
       proRes,
       notificationRes,
@@ -344,6 +348,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       supabase.from('asks').select('*').order('created_at', { ascending: false }),
       supabase.from('ask_messages').select('*').order('created_at', { ascending: true }),
       supabase.from('polls').select('*').order('created_at', { ascending: false }),
+      supabase.from('poll_options').select('*').order('position', { ascending: true }),
       supabase.from('poll_votes').select('*'),
       supabase.from('pros').select('*'),
       supabase.from('notifications').select('*').order('created_at', { ascending: false }),
@@ -380,6 +385,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     setAskRows((askRes.data ?? []) as AskRow[]);
     setAskMessageRows((askMessageRes.data ?? []) as AskMessageRow[]);
     setPollRows((pollRes.data ?? []) as PollRow[]);
+    setPollOptionRows((pollOptionRes.data ?? []) as PollOptionRow[]);
     setPollVoteRows((pollVoteRes.data ?? []) as PollVoteRow[]);
     setProRows((proRes.data ?? []) as ProRow[]);
     setNotificationRows((notificationRes.data ?? []) as NotificationRow[]);
@@ -422,6 +428,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       setAskRows([]);
       setAskMessageRows([]);
       setPollRows([]);
+      setPollOptionRows([]);
       setPollVoteRows([]);
       setProRows([]);
       setNotificationRows([]);
@@ -794,6 +801,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       const rsvps = eventRsvpRows.filter((r) => r.event_id === row.id && r.going);
       const host = row.host_profile_id ? profilesById.get(row.host_profile_id) : undefined;
       const { mon, day } = monthDay(row.event_date);
+      const club = row.club_id ? clubRows.find((c) => c.id === row.club_id) : undefined;
       return {
         id: row.id,
         emoji: row.emoji,
@@ -811,9 +819,10 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
         accent: row.accent,
         accentDeep: row.accent_deep,
         desc: row.description,
+        club: club ? { id: club.id, name: club.name, emoji: club.emoji } : undefined,
       };
     });
-  }, [eventRows, eventRsvpRows, profilesById, myRow, personRoster]);
+  }, [eventRows, eventRsvpRows, profilesById, myRow, personRoster, clubRows]);
 
   const eventRsvps: Record<string, boolean> = useMemo(() => {
     const out: Record<string, boolean> = {};
@@ -869,22 +878,26 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
 
   const polls: Poll[] = useMemo(() => {
     return pollRows.map((row) => {
+      const rowOptions = pollOptionRows.filter((o) => o.poll_id === row.id).sort((a, b) => a.position - b.position);
       const rowVotes = pollVoteRows.filter((v) => v.poll_id === row.id);
+      const options = rowOptions.map((o) => ({
+        id: o.id,
+        text: o.text,
+        votes: rowVotes.filter((v) => v.option_id === o.id).length,
+      }));
       return {
         id: row.id,
         title: row.title,
         description: row.description,
-        optionA: row.option_a,
-        optionB: row.option_b,
-        votesA: rowVotes.filter((v) => v.choice === 'a').length,
-        votesB: rowVotes.filter((v) => v.choice === 'b').length,
+        options,
+        totalVotes: rowVotes.length,
       };
     });
-  }, [pollRows, pollVoteRows]);
+  }, [pollRows, pollOptionRows, pollVoteRows]);
 
-  const votes: Record<string, Vote> = useMemo(() => {
-    const out: Record<string, Vote> = {};
-    for (const v of pollVoteRows) if (v.profile_id === myRow?.id) out[v.poll_id] = v.choice;
+  const votes: Record<string, string> = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const v of pollVoteRows) if (v.profile_id === myRow?.id) out[v.poll_id] = v.option_id;
     return out;
   }, [pollVoteRows, myRow]);
 
@@ -1081,11 +1094,11 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   );
 
   const vote = useCallback(
-    async (pollId: string, which: Vote) => {
+    async (pollId: string, optionId: string) => {
       if (!myRow || votes[pollId]) return;
       const { data, error } = await supabase
         .from('poll_votes')
-        .insert({ poll_id: pollId, profile_id: myRow.id, choice: which })
+        .insert({ poll_id: pollId, profile_id: myRow.id, option_id: optionId })
         .select()
         .single();
       if (error || !data) {
@@ -1098,22 +1111,30 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addPoll = useCallback(
-    async (args: { title: string; description: string; optionA: string; optionB: string }) => {
+    async (args: { title: string; description: string; options: string[] }) => {
       if (!myRow) return;
-      const tempId = makeTempId();
+      const options = args.options.map((t) => t.trim()).filter(Boolean);
+      if (options.length < 2) return;
+
+      const tempPollId = makeTempId();
       setPollRows((rows) => [
         {
-          id: tempId,
+          id: tempPollId,
           community_id: myRow.community_id,
           board_profile_id: myRow.id,
           title: args.title,
           description: args.description,
-          option_a: args.optionA,
-          option_b: args.optionB,
+          option_a: options[0],
+          option_b: options[1],
           created_at: new Date().toISOString(),
         },
         ...rows,
       ]);
+      setPollOptionRows((rows) => [
+        ...rows,
+        ...options.map((text, i) => ({ id: makeTempId(), poll_id: tempPollId, position: i, text })),
+      ]);
+
       const { data, error } = await supabase
         .from('polls')
         .insert({
@@ -1121,17 +1142,30 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
           board_profile_id: myRow.id,
           title: args.title,
           description: args.description,
-          option_a: args.optionA,
-          option_b: args.optionB,
+          option_a: options[0],
+          option_b: options[1],
         })
         .select()
         .single();
       if (error || !data) {
-        setPollRows((rows) => rows.filter((r) => r.id !== tempId));
+        setPollRows((rows) => rows.filter((r) => r.id !== tempPollId));
+        setPollOptionRows((rows) => rows.filter((r) => r.poll_id !== tempPollId));
         notify("Couldn't post", 'Something went wrong posting this vote. Try again.');
         return;
       }
-      setPollRows((rows) => rows.map((r) => (r.id === tempId ? (data as PollRow) : r)));
+      const poll = data as PollRow;
+      setPollRows((rows) => rows.map((r) => (r.id === tempPollId ? poll : r)));
+
+      const { data: optionRows, error: optionsError } = await supabase
+        .from('poll_options')
+        .insert(options.map((text, i) => ({ poll_id: poll.id, position: i, text })))
+        .select();
+      if (optionsError || !optionRows) {
+        setPollOptionRows((rows) => rows.filter((r) => r.poll_id !== tempPollId));
+        notify("Couldn't post", "The poll posted, but its options failed to save. Try deleting and re-creating it.");
+        return;
+      }
+      setPollOptionRows((rows) => [...rows.filter((r) => r.poll_id !== tempPollId), ...(optionRows as PollOptionRow[])]);
     },
     [myRow]
   );
@@ -1187,6 +1221,62 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     [myRow, clubEventRsvps]
   );
 
+  const createClub = useCallback(
+    async (args: { name: string; emoji: string; tagline: string; meets: string; about: string }) => {
+      if (!myRow) return;
+      const tempId = makeTempId();
+      const optimisticRow: ClubRow = {
+        id: tempId,
+        community_id: myRow.community_id,
+        emoji: args.emoji,
+        name: args.name,
+        meets: args.meets,
+        accent: theme.colors.grassPale,
+        accent_deep: theme.colors.grassDeep,
+        tagline: args.tagline,
+        since_text: `Since ${new Date().getFullYear()}`,
+        spot: '',
+        about: args.about,
+        next_title: '',
+        next_when: '',
+        next_where: '',
+        lead_profile_id: myRow.id,
+        rules: [],
+        created_at: new Date().toISOString(),
+      };
+      setClubRows((rows) => [optimisticRow, ...rows]);
+      setClubMemberRows((rows) => [...rows, { club_id: tempId, profile_id: myRow.id, joined_at: new Date().toISOString() }]);
+
+      const { data, error } = await supabase
+        .from('clubs')
+        .insert({
+          community_id: myRow.community_id,
+          emoji: args.emoji,
+          name: args.name,
+          meets: args.meets,
+          accent: optimisticRow.accent,
+          accent_deep: optimisticRow.accent_deep,
+          tagline: args.tagline,
+          since_text: optimisticRow.since_text,
+          about: args.about,
+          lead_profile_id: myRow.id,
+        })
+        .select()
+        .single();
+      if (error || !data) {
+        setClubRows((rows) => rows.filter((r) => r.id !== tempId));
+        setClubMemberRows((rows) => rows.filter((r) => r.club_id !== tempId));
+        notify("Couldn't start this club", 'Something went wrong creating it. Try again.');
+        return;
+      }
+      const club = data as ClubRow;
+      setClubRows((rows) => rows.map((r) => (r.id === tempId ? club : r)));
+      setClubMemberRows((rows) => rows.map((r) => (r.club_id === tempId ? { ...r, club_id: club.id } : r)));
+      await supabase.from('club_members').insert({ club_id: club.id, profile_id: myRow.id });
+    },
+    [myRow]
+  );
+
   const addClubPost = useCallback(
     async (clubId: string, text: string) => {
       if (!myRow) return;
@@ -1234,7 +1324,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addEvent = useCallback(
-    async (args: { emoji: string; title: string; eventDate: string; eventTime: string; where: string; description: string }) => {
+    async (args: { emoji: string; title: string; eventDate: string; eventTime: string; where: string; description: string; clubId?: string | null }) => {
       if (!myRow) return;
       const tempId = makeTempId();
       setEventRows((rows) => [
@@ -1252,6 +1342,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
           host_name: `${myRow.first_name} ${myRow.last_name}`.trim(),
           accent: theme.colors.grassPale,
           accent_deep: theme.colors.grassDeep,
+          club_id: args.clubId ?? null,
           created_at: new Date().toISOString(),
         },
       ]);
@@ -1269,6 +1360,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
           host_name: `${myRow.first_name} ${myRow.last_name}`.trim(),
           accent: theme.colors.grassPale,
           accent_deep: theme.colors.grassDeep,
+          club_id: args.clubId ?? null,
         })
         .select()
         .single();
@@ -1386,6 +1478,22 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       if (ask) logModeration('ask', ask.text);
     },
     [askRows, logModeration]
+  );
+
+  const deletePoll = useCallback(
+    async (pollId: string) => {
+      const poll = pollRows.find((p) => p.id === pollId);
+      const { error } = await supabase.rpc('moderate_delete_poll', { p_poll_id: pollId });
+      if (error) {
+        notify("Couldn't delete", 'Something went wrong deleting this vote. Try again.');
+        return;
+      }
+      setPollRows((rows) => rows.filter((p) => p.id !== pollId));
+      setPollOptionRows((rows) => rows.filter((o) => o.poll_id !== pollId));
+      setPollVoteRows((rows) => rows.filter((v) => v.poll_id !== pollId));
+      if (poll) logModeration('poll', poll.title);
+    },
+    [pollRows, logModeration]
   );
 
   const addPost = useCallback(
@@ -1514,6 +1622,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       joinedClubIds,
       toggleClubJoined,
       addClubPost,
+      createClub,
       clubEventRsvps,
       toggleClubEventRsvp,
       moderationLog,
@@ -1521,6 +1630,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       deleteEvent,
       deleteSpot,
       deleteAsk,
+      deletePoll,
       posts,
       addPost,
       deletePost,
@@ -1584,6 +1694,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       joinedClubIds,
       toggleClubJoined,
       addClubPost,
+      createClub,
       clubEventRsvps,
       toggleClubEventRsvp,
       moderationLog,
@@ -1591,6 +1702,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       deleteEvent,
       deleteSpot,
       deleteAsk,
+      deletePoll,
       posts,
       addPost,
       deletePost,

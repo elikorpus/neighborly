@@ -3,6 +3,7 @@ import { LogOut } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Card } from '../components/Card';
+import { LongLogo } from '../components/Logo';
 import { ScoreRing } from '../components/ScoreRing';
 import { RealtorStackParamList } from '../navigation/types';
 import { useAppState } from '../state/AppStateContext';
@@ -19,9 +20,7 @@ export function RealtorCommunitiesScreen({ navigation }: Props) {
     <SafeAreaView style={styles.screen}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.wordmark}>
-            oneblock<Text style={{ color: theme.colors.grass }}>.</Text>
-          </Text>
+          <LongLogo height={18} />
           <Text style={styles.subtitle}>{realtorProfile?.name ? `${realtorProfile.name} · Realtor` : 'Realtor'}</Text>
         </View>
         <Pressable onPress={logout} style={styles.logoutBtn} hitSlop={8}>
@@ -72,7 +71,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: theme.colors.paper,
   },
-  wordmark: { fontFamily: theme.font.displayBold, fontSize: 18, color: theme.colors.ink },
   subtitle: { fontSize: 12, color: theme.colors.inkSoft, fontFamily: theme.font.bodySemibold, marginTop: 2 },
   logoutBtn: { padding: 6 },
   content: { padding: 20 },

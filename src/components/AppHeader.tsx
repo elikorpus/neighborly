@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAppState } from '../state/AppStateContext';
 import { theme } from '../theme';
 import { Avatar } from './Avatar';
+import { LongLogo } from './Logo';
 
 export type AppHeaderProps = {
   onOpenNotifications: () => void;
@@ -17,9 +18,7 @@ export function AppHeader({ onOpenNotifications, onOpenProfile }: AppHeaderProps
   return (
     <View style={styles.row}>
       <View style={styles.left}>
-        <Text style={styles.wordmark}>
-          oneblock<Text style={{ color: theme.colors.grass }}>.</Text>
-        </Text>
+        <LongLogo height={18} />
       </View>
       <View style={styles.right}>
         <Pressable onPress={onOpenNotifications} hitSlop={8} style={styles.bellBtn}>
@@ -50,7 +49,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.paper,
   },
   left: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  wordmark: { fontFamily: theme.font.displayBold, fontSize: 18, color: theme.colors.ink },
   right: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   bellBtn: { padding: 4 },
   badge: {
