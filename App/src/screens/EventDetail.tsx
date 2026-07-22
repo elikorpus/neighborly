@@ -93,7 +93,7 @@ export function EventDetailScreen({ route, navigation }: Props) {
             <View style={[styles.emojiBadge, theme.hardShadow('lg')]}>
               <Text style={{ fontSize: 30 }}>{ev.emoji}</Text>
             </View>
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={styles.title}>{ev.title}</Text>
               <View style={[styles.metaRow, { marginTop: 6 }]}>
                 <Calendar size={13} color={ev.accentDeep} />
@@ -125,7 +125,7 @@ export function EventDetailScreen({ route, navigation }: Props) {
           <Card style={{ marginBottom: 20 }}>
             <PersonLink personId={'id' in ev.host ? ev.host.id : undefined} style={styles.rowCenter}>
               <Avatar initials={ev.host.initials} bg={ev.host.bg} photoUrl={'avatarUrl' in ev.host ? ev.host.avatarUrl : null} size={40} tilt={-3} />
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.hostName}>{ev.host.name}</Text>
                 <Text style={styles.hostRole}>Organizer</Text>
               </View>

@@ -32,7 +32,7 @@ export function BusinessProfileScreen({ route, navigation }: Props) {
       <BackBar title="Business" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={styles.body}>
         <View style={styles.headerRow}>
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.name}>{business.name}</Text>
             {!!business.category && <Text style={styles.category}>{business.category}</Text>}
           </View>

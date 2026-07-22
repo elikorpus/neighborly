@@ -325,10 +325,10 @@ export function OnboardingScreen({ navigation }: Props) {
               This becomes your Yellow Pages entry — how neighbors know who you are and what you do.
             </Text>
             <View style={styles.rowGap}>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <Input label="First name" value={about.firstName} onChangeText={(v) => setAbout({ ...about, firstName: v })} placeholder="Ella" />
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <Input label="Last name" value={about.lastName} onChangeText={(v) => setAbout({ ...about, lastName: v })} placeholder="Lane" />
               </View>
             </View>
@@ -336,7 +336,7 @@ export function OnboardingScreen({ navigation }: Props) {
               <View style={{ width: 96 }}>
                 <Input label="Age" value={about.age} onChangeText={(v) => setAbout({ ...about, age: v })} placeholder="34" keyboardType="number-pad" />
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <Input label="What you do" value={about.profession} onChangeText={(v) => setAbout({ ...about, profession: v })} placeholder="Artist · brand founder" />
               </View>
             </View>
@@ -395,7 +395,7 @@ export function OnboardingScreen({ navigation }: Props) {
                   size={32}
                   tilt={3}
                 />
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.famName}>{f.name}</Text>
                   <Text style={styles.famMeta}>
                     {f.relation}
@@ -434,7 +434,7 @@ export function OnboardingScreen({ navigation }: Props) {
                   keyboardType="number-pad"
                 />
                 <View style={styles.rowGap}>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Button variant="dark" size="md" onPress={addFam}>
                       Add
                     </Button>

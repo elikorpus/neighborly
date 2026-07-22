@@ -44,7 +44,7 @@ export function RealtorCommunitiesScreen({ navigation }: Props) {
                   <Text style={styles.placeholderText}>–</Text>
                 </View>
               )}
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.name}>{n.name}</Text>
                 <Text style={styles.meta}>
                   {n.householdCount} household{n.householdCount === 1 ? '' : 's'} · {n.eventsPerMonth} events/mo

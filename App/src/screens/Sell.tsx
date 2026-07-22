@@ -65,7 +65,7 @@ export function SellScreen({ navigation }: Props) {
                 <Text style={styles.scorePlaceholderText}>–</Text>
               </View>
             )}
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={styles.scoreName}>{communityName || 'Your community'}</Text>
               {neighborhoodScore != null ? (
                 <View style={styles.trendRow}>
@@ -83,7 +83,7 @@ export function SellScreen({ navigation }: Props) {
               {neighborhoodTrends.map((t, i) => (
                 <View key={t.label} style={[styles.trendItemRow, i > 0 && styles.trendItemBorder]}>
                   <TrendingUp size={14} color={theme.colors.grass} style={{ marginTop: 2 }} />
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <View style={styles.trendItemHead}>
                       <Text style={styles.trendItemLabel}>{t.label}</Text>
                       <Text style={styles.trendItemValue}>{t.value}</Text>
@@ -109,7 +109,7 @@ export function SellScreen({ navigation }: Props) {
               <Card key={r.id} style={{ marginBottom: 12 }}>
                 <View style={styles.realtorRow}>
                   <Avatar initials={av.initials} bg={av.bg} size={44} tilt={-3} />
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={styles.realtorName}>{r.name}</Text>
                     <Text style={styles.realtorTag}>{r.tag}</Text>
                     <Text style={styles.realtorDeals}>{r.dealsNote}</Text>
@@ -137,7 +137,7 @@ export function SellScreen({ navigation }: Props) {
                     <Text style={styles.scorePlaceholderText}>–</Text>
                   </View>
                 )}
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <View style={styles.nHead}>
                     <Text style={styles.nName}>{n.name}</Text>
                     {n.you && (

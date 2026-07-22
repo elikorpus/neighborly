@@ -63,7 +63,7 @@ export function PersonProfileScreen({ route, navigation }: Props) {
       <ScrollView>
         <View style={styles.hero}>
           <Avatar initials={p.initials} bg={p.bg} photoUrl={p.avatarUrl} size={72} tilt={-4} />
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, minWidth: 0 }}>
             <View style={styles.nameRow}>
               <Text style={styles.name}>{p.name}</Text>
               {p.isBoardMember && <PillTag tone="marigold">🏛 HOA Board</PillTag>}
@@ -120,7 +120,7 @@ export function PersonProfileScreen({ route, navigation }: Props) {
                       size={34}
                       tilt={3}
                     />
-                    <View style={{ flex: 1 }}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
                       <Text style={styles.famName}>{f.name}</Text>
                       <Text style={styles.famMeta}>
                         {f.relation}

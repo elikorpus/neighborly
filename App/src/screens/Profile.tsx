@@ -180,10 +180,10 @@ export function ProfileScreen({ navigation }: Props) {
         {editing ? (
           <Card style={{ marginBottom: 20 }}>
             <View style={styles.rowGap}>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <Input label="First name" value={draft.firstName} onChangeText={(t) => setDraft({ ...draft, firstName: t })} />
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <Input label="Last name" value={draft.lastName} onChangeText={(t) => setDraft({ ...draft, lastName: t })} />
               </View>
             </View>
@@ -270,7 +270,7 @@ export function ProfileScreen({ navigation }: Props) {
                 size={34}
                 tilt={3}
               />
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.famName}>{f.name}</Text>
                 <Text style={styles.famMeta}>
                   {f.relation}
@@ -363,7 +363,7 @@ export function ProfileScreen({ navigation }: Props) {
           <>
             <Pressable onPress={() => navigation.navigate('Sell')} style={styles.sellBtn}>
               <Text style={{ fontSize: 24 }}>🏡</Text>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.sellTitle}>Sell</Text>
                 <Text style={styles.sellSub}>Your home value, certified realtors, and neighborhood scores</Text>
               </View>

@@ -232,7 +232,7 @@ export function TodayScreen() {
           <PopIn key={e.id} delay={70 * (i + 1)} style={{ marginBottom: 16 }}>
             <Card onPress={() => navigation.navigate('EventDetail', { eventId: e.id })}>
               <View style={styles.rowBetween}>
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <View style={styles.eventEyebrowRow}>
                     <Calendar size={12} color={theme.colors.grass} />
                     <Text style={styles.eventEyebrow}>
@@ -274,7 +274,7 @@ export function TodayScreen() {
           >
             <View style={styles.rowCenter}>
               <Avatar initials={newNeighbor.initials} bg={newNeighbor.bg} photoUrl={newNeighbor.avatarUrl} size={48} tilt={5} />
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.marigoldEyebrow}>👋 Say hello</Text>
                 <Text style={styles.cardTitle}>{newNeighbor.name}</Text>
                 <Text style={styles.cardBody}>{newNeighbor.street}</Text>
@@ -309,7 +309,7 @@ export function TodayScreen() {
                   style={styles.notificationRow}
                 >
                   <Text style={{ fontSize: 18 }}>{n.emoji}</Text>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={styles.cardTitle}>{n.title}</Text>
                     <Text style={styles.cardBody}>{n.sub}</Text>
                   </View>
@@ -327,9 +327,9 @@ export function TodayScreen() {
           {posts.map((p) => (
             <Card key={p.id} style={{ marginBottom: 12 }}>
               <View style={styles.rowCenter}>
-                <PersonLink personId={p.authorId} style={styles.rowCenter}>
+                <PersonLink personId={p.authorId} style={[styles.rowCenter, { flex: 1, minWidth: 0 }]}>
                   <Avatar initials={p.initials} bg={p.bg} photoUrl={p.avatarUrl} size={36} tilt={3} />
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={styles.postWho}>
                       {p.who} <Text style={styles.postWhen}>· {p.createdAt}</Text>
                     </Text>

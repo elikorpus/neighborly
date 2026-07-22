@@ -112,7 +112,7 @@ export function DiscoverScreen() {
                   <View style={[styles.businessIcon, b.isSponsored && { backgroundColor: theme.colors.marigoldSoft }]}>
                     <Store size={18} color={b.isSponsored ? theme.colors.marigoldInk : theme.colors.grassDeep} />
                   </View>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <View style={styles.dirNameRow}>
                       <Text style={styles.spotName}>{b.name}</Text>
                       {b.isSponsored && <PillTag tone="marigold">✨ Sponsored</PillTag>}
@@ -135,7 +135,7 @@ export function DiscoverScreen() {
                 <Input label="Website" value={businessDraft.website} onChangeText={(t) => setBusinessDraft({ ...businessDraft, website: t })} placeholder="Optional" autoCapitalize="none" />
                 <Input label="Why you recommend them" value={businessDraft.description} onChangeText={(t) => setBusinessDraft({ ...businessDraft, description: t })} placeholder="Optional" />
                 <View style={styles.rowGap}>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Button
                       variant="dark"
                       size="md"
@@ -180,7 +180,7 @@ export function DiscoverScreen() {
               <Card style={{ borderColor: theme.colors.marigold, borderWidth: 2 }}>
                 <View style={styles.selectedRow}>
                   <Avatar initials={selected.initials} bg={selected.bg} photoUrl={selected.avatarUrl} size={44} tilt={-3} />
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={styles.selectedName}>{selected.name}</Text>
                     {selected.isPrivate ? (
                       <Text style={styles.selectedPrivate}>🔒 Private profile</Text>
@@ -213,7 +213,7 @@ export function DiscoverScreen() {
             {spots.map((s) => (
               <View key={s.id} style={styles.spotRow}>
                 <Text style={{ fontSize: 18 }}>{s.emoji}</Text>
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.spotName}>{s.name}</Text>
                   <Text style={styles.spotSub}>{s.detail}</Text>
                 </View>
@@ -235,7 +235,7 @@ export function DiscoverScreen() {
                   <View style={{ width: 64 }}>
                     <Input label="Emoji" value={spotDraft.emoji} onChangeText={(t) => setSpotDraft({ ...spotDraft, emoji: t })} />
                   </View>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Input label="Name" value={spotDraft.name} onChangeText={(t) => setSpotDraft({ ...spotDraft, name: t })} placeholder="e.g. Taco truck" />
                   </View>
                 </View>
@@ -246,7 +246,7 @@ export function DiscoverScreen() {
                   placeholder="Where + when"
                 />
                 <View style={styles.rowGap}>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Button
                       variant="dark"
                       size="md"
@@ -295,7 +295,7 @@ export function DiscoverScreen() {
             <Card key={n.id} style={{ marginBottom: 12 }} onPress={() => navigation.navigate('PersonProfile', { personId: n.id })}>
               <View style={styles.dirRow}>
                 <Avatar initials={n.initials} bg={n.bg} photoUrl={n.avatarUrl} size={44} tilt={i % 2 ? 3 : -3} />
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <View style={styles.dirNameRow}>
                     <Text style={styles.dirName}>{n.name}</Text>
                     {n.isBoardMember && <PillTag tone="marigold">🏛 HOA</PillTag>}

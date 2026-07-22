@@ -45,7 +45,7 @@ export function NotificationsScreen({ navigation }: Props) {
         <View style={[styles.iconChip, { backgroundColor: n.tint }, theme.hardShadow('sm')]}>
           <Text style={{ fontSize: 19 }}>{n.emoji}</Text>
         </View>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={styles.title}>{n.title}</Text>
           <Text style={styles.sub}>{n.sub}</Text>
         </View>

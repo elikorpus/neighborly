@@ -116,7 +116,7 @@ export function EventsScreen() {
           />
           {!!error && <Text style={styles.errorText}>{error}</Text>}
           <View style={styles.rowGap}>
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, minWidth: 0 }}>
               <Button variant="dark" size="md" onPress={submit}>
                 Post to {communityName || 'your neighborhood'}
               </Button>
@@ -152,7 +152,7 @@ export function EventsScreen() {
           <Card key={e.id} onPress={() => navigation.navigate('EventDetail', { eventId: e.id })} style={{ marginBottom: 12 }}>
             <View style={styles.row}>
               <DateChip mon={e.mon} day={e.day} />
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <View style={styles.titleRow}>
                   <Text style={{ fontSize: 16 }}>{e.emoji}</Text>
                   <Text style={styles.eventTitle}>{e.title}</Text>

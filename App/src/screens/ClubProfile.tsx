@@ -76,7 +76,7 @@ export function ClubProfileScreen({ route, navigation }: Props) {
             <View style={[styles.emojiBadge, theme.hardShadow('lg')]}>
               <Text style={{ fontSize: 32 }}>{club.emoji}</Text>
             </View>
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={[styles.clubName, club.headerUrl && { color: '#fff' }]}>{club.name}</Text>
               <Text style={[styles.tagline, { color: club.headerUrl ? '#fff' : club.accentDeep }]}>{club.tagline}</Text>
             </View>
@@ -141,7 +141,7 @@ export function ClubProfileScreen({ route, navigation }: Props) {
               {clubEvents.map((e) => (
                 <Card key={e.id} onPress={() => navigation.navigate('EventDetail', { eventId: e.id })} style={{ marginBottom: 12 }}>
                   <View style={styles.rowCenter}>
-                    <View style={{ flex: 1 }}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
                       <Text style={styles.leadName}>
                         {e.emoji} {e.title}
                       </Text>
@@ -160,7 +160,7 @@ export function ClubProfileScreen({ route, navigation }: Props) {
           <Card style={{ marginBottom: 20 }}>
             <PersonLink personId={club.lead.id} style={styles.rowCenter}>
               <Avatar initials={club.lead.initials} bg={club.lead.bg} photoUrl={club.lead.avatarUrl} size={44} tilt={-3} />
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.leadName}>{club.lead.name}</Text>
                 <Text style={styles.leadJob}>{club.lead.job}</Text>
                 {!!club.spot && <Text style={styles.leadSpot}>Meets at {club.spot}</Text>}
@@ -220,9 +220,9 @@ export function ClubProfileScreen({ route, navigation }: Props) {
           {club.posts.map((p) => (
             <Card key={p.id} style={{ marginBottom: 12 }}>
               <View style={styles.rowCenter}>
-                <PersonLink personId={p.authorId} style={styles.rowCenter}>
+                <PersonLink personId={p.authorId} style={[styles.rowCenter, { flex: 1, minWidth: 0 }]}>
                   <Avatar initials={p.initials} bg={p.bg} photoUrl={p.avatarUrl} size={36} tilt={3} />
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={styles.postWho}>{p.who}</Text>
                     <Text style={styles.postText}>{p.text}</Text>
                   </View>

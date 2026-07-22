@@ -49,7 +49,7 @@ export function HouseDetailScreen({ route, navigation }: Props) {
           <Card style={{ marginTop: 20 }} onPress={() => navigation.navigate('PersonProfile', { personId: resident.id })}>
             <View style={styles.residentRow}>
               <Avatar initials={resident.initials} bg={resident.bg} size={48} tilt={-3} />
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <View style={styles.nameRow}>
                   <Text style={styles.residentName}>{resident.name}</Text>
                   {resident.isBoardMember && <PillTag tone="marigold">🏛 HOA</PillTag>}

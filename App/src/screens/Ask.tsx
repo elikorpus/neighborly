@@ -113,7 +113,7 @@ export function AskScreen() {
               style={styles.composeInput}
             />
             <View style={styles.rowGap}>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <Button variant="dark" size="md" onPress={submitAsk}>
                   Post to {communityName || 'your neighborhood'}
                 </Button>
@@ -138,7 +138,7 @@ export function AskScreen() {
               <PersonLink personId={p.authorId}>
                 <Avatar initials={p.initials} bg={p.bg} size={38} tilt={i % 2 ? 3 : -3} />
               </PersonLink>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <View style={styles.askHead}>
                   <PersonLink personId={p.authorId}>
                     <Text style={styles.askWho}>{p.who}</Text>
@@ -173,7 +173,7 @@ export function AskScreen() {
           pros.map((p) => (
             <Card key={p.name} style={{ marginBottom: 12 }}>
               <View style={styles.proRow}>
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.proName}>{p.name}</Text>
                   <Text style={styles.proTag}>{p.tag}</Text>
                 </View>
@@ -209,7 +209,7 @@ export function AskScreen() {
                 />
                 {pollDraft.options.map((opt, i) => (
                   <View key={i} style={styles.pollOptionRow}>
-                    <View style={{ flex: 1 }}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
                       <Input label={`Option ${i + 1}`} value={opt} onChangeText={(t) => setPollOption(i, t)} placeholder="e.g. Yes, replace it" />
                     </View>
                     {pollDraft.options.length > 2 && (
@@ -226,7 +226,7 @@ export function AskScreen() {
                 )}
                 {!!pollError && <Text style={styles.errorText}>{pollError}</Text>}
                 <View style={styles.rowGap}>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Button variant="dark" size="md" onPress={submitPoll}>
                       Post for a vote
                     </Button>
@@ -265,7 +265,7 @@ export function AskScreen() {
             return (
               <Card key={p.id} style={{ marginBottom: 12 }}>
                 <View style={styles.pollHeadRow}>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={styles.pollTitle}>{p.title}</Text>
                     {!!p.description && <Text style={styles.pollDesc}>{p.description}</Text>}
                   </View>

@@ -158,7 +158,7 @@ export function HOAScreen() {
                   style={styles.announcementInput}
                 />
                 <View style={styles.rowGap}>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Button
                       variant="dark"
                       size="md"
@@ -229,7 +229,7 @@ export function HOAScreen() {
                   <PersonLink personId={t.residentId}>
                     <Avatar initials={t.initials} bg={t.bg} size={40} tilt={-3} />
                   </PersonLink>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={styles.threadName}>{t.residentName}</Text>
                     {!!last && (
                       <Text style={styles.threadPreview} numberOfLines={1}>

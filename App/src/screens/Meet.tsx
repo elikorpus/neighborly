@@ -58,7 +58,7 @@ export function MeetScreen() {
           <Card key={n.id} onPress={() => navigation.navigate('PersonProfile', { personId: n.id })} style={{ marginBottom: 12 }}>
             <View style={styles.matchRow}>
               <Avatar initials={n.initials} bg={n.bg} photoUrl={n.avatarUrl} size={48} tilt={i % 2 ? 4 : -4} />
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <View style={styles.matchHead}>
                   <Text style={styles.matchName}>{n.name}</Text>
                   {!n.isPrivate && <Text style={styles.matchStreet}>{n.street}</Text>}
@@ -100,7 +100,7 @@ export function MeetScreen() {
             <View style={[styles.clubIcon, { backgroundColor: c.accent }]}>
               <Text style={{ fontSize: 20 }}>{c.emoji}</Text>
             </View>
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={styles.clubName}>{c.name}</Text>
               <Text style={styles.clubMeta}>
                 {c.meets} · {c.members} members
@@ -116,7 +116,7 @@ export function MeetScreen() {
               <View style={{ width: 72 }}>
                 <Input label="Emoji" value={clubDraft.emoji} onChangeText={(t) => setClubDraft({ ...clubDraft, emoji: t })} placeholder="🎉" />
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <Input label="Club name" value={clubDraft.name} onChangeText={(t) => setClubDraft({ ...clubDraft, name: t })} placeholder="e.g. Sunrise Runners" />
               </View>
             </View>
@@ -125,7 +125,7 @@ export function MeetScreen() {
             <Input label="About" value={clubDraft.about} onChangeText={(t) => setClubDraft({ ...clubDraft, about: t })} placeholder="What should neighbors know?" />
             {!!clubError && <Text style={styles.errorText}>{clubError}</Text>}
             <View style={styles.rowGap}>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <Button variant="dark" size="md" onPress={submitClub}>
                   Start this club
                 </Button>
